@@ -42,3 +42,10 @@ class Board:
         col = int(x // self.cell_W_pix)
         row = int(y // self.cell_H_pix)
         return row, col
+
+    def cell_to_algebraic(self, cell: Tuple[int, int]) -> str:
+        row, col = cell
+        col_letter = chr(ord('a') + col)
+        row_number = str(8 - row)  # assuming 8x8 board
+        return f"{col_letter}{row_number}"
+
