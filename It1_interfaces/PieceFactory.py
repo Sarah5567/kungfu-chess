@@ -61,7 +61,33 @@ class PieceFactory:
     def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
         if p_type not in self._templates:
             piece_dir = self.pieces_root / p_type
-            init_state = self._build_state_machine(piece_dir)
-            piece = Piece(p_type, init_state)
-            self._templates[p_type] = piece
-        return self._templates[p_type].clone_to(cell, self._physics_factory)
+            template_state = self._build_state_machine(piece_dir)
+            self._templates[p_type] = template_state
+
+        # יצירת עותק עמוק של כל המצבים והטרנזיציות
+        init_state = self._deep_copy_state_machine(self._templates[p_type], cell)
+        return Piece(p_type, init_state)
+
+    def _deep_copy_state_machine(self, template_state: State, cell: Tuple[int, int]) -> State:
+        state_mapping = {}
+        
+        def copy_state(state: State) -> State:
+            if state in state_mapping:
+                return state_mapping[state]
+                
+            raw_state_name = state._physics.__class__.__name__.replace("Physics", "").lower().strip()
+            # אם הערך שחושב לא תואם, נניח שהמצב הוא idle (כך בהתחלה הכל במצב idle)
+            state_name = raw_state_name if raw_state_name in ["idle", "move", "jump", "short_rest", "long_rest"] else "idle"
+            
+            new_physics = self._physics_factory.create(state_name, cell, {})
+            new_state = State(state._moves, state._graphics, new_physics)
+            
+            state_mapping[state] = new_state
+            
+            # העתקת הטרנזיציות תוך כדי קריאה רקורסיבית, כך שהמפה לא משתנה תוך כדי איטרציה
+            for event, target in state.transitions.items():
+                new_target = copy_state(target)
+                new_state.set_transition(event, new_target)
+            return new_state
+
+        return copy_state(template_state)

@@ -176,10 +176,8 @@ class LongRestPhysics(Physics):
         if self.start_time is None:
             self.start_time = now_ms
 
-        # if now_ms - self.start_time >= self.rest_duration:
-        #     return self.cmd
-
         if now_ms - self.start_time >= self.rest_duration:
+            self.finished = True  # סיום הפעולה ώστε לעבור ל-idle
             return Command(
                 timestamp=now_ms,
                 piece_id=self.cmd.piece_id,
