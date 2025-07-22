@@ -137,11 +137,30 @@ class Game:
 
     def _update_position_mapping(self):
         self.pos_to_piece.clear()
-        for piece in self.pieces.values():
+        to_remove = set()
+
+        for piece in list(self.pieces.values()):  # שימוש ב-list כדי להקפיא את הערכים בזמן הלולאה
             x, y = map(int, piece._state._physics.get_pos())
             cell_x = x // self.board.cell_W_pix
             cell_y = y // self.board.cell_H_pix
-            self.pos_to_piece[(cell_y, cell_x)] = piece
+            pos = (cell_y, cell_x)
+
+            if pos in self.pos_to_piece:
+                opponent = self.pos_to_piece[pos]
+                if (not opponent._state._current_command or 
+                    opponent._state._current_command.type == "idle" or 
+                    opponent._state._physics.start_time > piece._state._physics.start_time):
+                    
+                    self.pos_to_piece[pos] = piece
+                    to_remove.add(opponent.get_unique())
+                else:
+                    to_remove.add(piece.get_unique())
+            else:
+                self.pos_to_piece[pos] = piece
+
+        for k in to_remove:
+            self.pieces.pop(k, None)  # pop עם None כדי למנוע שגיאת KeyError
+
 
     def _draw(self):
         board = self.clone_board()
