@@ -5,8 +5,7 @@ import queue
 import cv2
 from typing import Dict, Tuple, Optional
 import threading
-import keyboard  # יש להתקין: pip install keyboard
-
+import keyboard
 from Board import Board
 from Command import Command
 from Piece import Piece
@@ -24,8 +23,14 @@ class Game:
         self._current_board = None
         self._load_pieces_from_csv(placement_csv)
         self.focus_cell = (0, 0)
-        self._selection_mode = "source"  # או "dest"
+        self._selection_mode = "source"  # עבור משתמש ראשון
         self._selected_source: Optional[Tuple[int, int]] = None
+
+        # --- משתנים למשתמש השני ---
+        self.focus_cell2 = (self.board.H_cells - 1, 0)  # התחלה בתחתית
+        self._selection_mode2 = "source"
+        self._selected_source2: Optional[Tuple[int, int]] = None
+        
         self._lock = threading.Lock()
         self._running = True
 
@@ -51,9 +56,9 @@ class Game:
     def start_keyboard_thread(self):
         def keyboard_loop():
             while self._running:
-                # יש להגדיר את זמן ההמתנה הקצר בין בדיקות כדי לא למלא את המעבד
                 time.sleep(0.05)
                 with self._lock:
+                    # --- טיפול בקלט למשתמש הראשון ---
                     dy, dx = 0, 0
                     if keyboard.is_pressed('esc'):
                         self._running = False
@@ -66,23 +71,33 @@ class Game:
                         dy = -1
                     elif keyboard.is_pressed('down'):
                         dy = 1
-
-                    # עדכון מיקום הפוקוס – רק אם יש שינוי
                     if dx != 0 or dy != 0:
                         h, w = self.board.H_cells, self.board.W_cells
                         y, x = self.focus_cell
                         self.focus_cell = ((y + dy) % h, (x + dx) % w)
-                        # המתנה קצרה למניעת קפיצות מיותרות
                         time.sleep(0.2)
-
-                    # טיפול במקשי בחירה – אנטר לבחירה, רווח לאיפוס
                     if keyboard.is_pressed('enter'):
                         self._on_enter_pressed()
                         time.sleep(0.2)
-                    elif keyboard.is_pressed('space'):
-                        self._reset_selection()
-                        time.sleep(0.2)
 
+                    # --- טיפול בקלט למשתמש השני ---
+                    dy2, dx2 = 0, 0
+                    if keyboard.is_pressed('a'):
+                        dx2 = -1
+                    elif keyboard.is_pressed('d'):
+                        dx2 = 1
+                    if keyboard.is_pressed('w'):
+                        dy2 = -1
+                    elif keyboard.is_pressed('s'):
+                        dy2 = 1
+                    if dx2 != 0 or dy2 != 0:
+                        h, w = self.board.H_cells, self.board.W_cells
+                        y2, x2 = self.focus_cell2
+                        self.focus_cell2 = ((y2 + dy2) % h, (x2 + dx2) % w)
+                        time.sleep(0.2)
+                    if keyboard.is_pressed('space'):
+                        self._on_space_pressed()
+                        time.sleep(0.2)
         threading.Thread(target=keyboard_loop, daemon=True).start()
 
     def run(self):
@@ -135,7 +150,7 @@ class Game:
         for piece in self.pieces.values():
             piece.draw_on_board(board, now_ms)
 
-        # ציור ריבוע פוקוס
+        # ציור ריבוע פוקוס למשתמש ראשון (צהוב)
         y, x = self.focus_cell
         x1 = x * self.board.cell_W_pix
         y1 = y * self.board.cell_H_pix
@@ -143,7 +158,15 @@ class Game:
         y2 = (y + 1) * self.board.cell_H_pix
         cv2.rectangle(board.img.img, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
-        # ציור ריבוע בחירה של המקור (אם נבחר)
+        # ציור ריבוע פוקוס למשתמש שני (כחול)
+        y2_, x2_ = self.focus_cell2
+        sx1 = x2_ * self.board.cell_W_pix
+        sy1 = y2_ * self.board.cell_H_pix
+        sx2 = (x2_ + 1) * self.board.cell_W_pix
+        sy2 = (y2_ + 1) * self.board.cell_H_pix
+        cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (255, 0, 0), 2)
+
+        # ציור ריבוע בחירה של המקור עבור משתמש ראשון
         if self._selected_source:
             sy, sx = self._selected_source
             sx1 = sx * self.board.cell_W_pix
@@ -151,6 +174,15 @@ class Game:
             sx2 = (sx + 1) * self.board.cell_W_pix
             sy2 = (sy + 1) * self.board.cell_H_pix
             cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 0, 255), 2)
+
+        # ציור ריבוע בחירה של המקור עבור משתמש שני
+        if self._selected_source2:
+            sy, sx = self._selected_source2
+            sx1 = sx * self.board.cell_W_pix
+            sy1 = sy * self.board.cell_H_pix
+            sx2 = (sx + 1) * self.board.cell_W_pix
+            sy2 = (sy + 1) * self.board.cell_H_pix
+            cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 255, 0), 2)
 
         self._current_board = board
 
@@ -167,11 +199,16 @@ class Game:
             print("Game over.")
 
     def _on_enter_pressed(self):
+        # טיפול בבחירה עבור משתמש ראשון
         if self._selection_mode == "source":
             if self.focus_cell in self.pos_to_piece:
-                # המרת תא למושגי שחמט לצורך דיבאג
+                piece = self.pos_to_piece[self.focus_cell]
+                # בדיקה שהכלי שייך למשתמש הראשון (מזהה שמתחיל ב-"B")
+                if not piece.get_id()[1] == 'B':
+                    print("User 1 cannot select this piece.")
+                    return
                 src_alg = self.board.cell_to_algebraic(self.focus_cell)
-                print(f"Source selected at {self.focus_cell} -> {src_alg}")
+                print(f"User 1 source selected at {self.focus_cell} -> {src_alg}")
                 self._selected_source = self.focus_cell
                 self._selection_mode = "dest"
         elif self._selection_mode == "dest":
@@ -179,10 +216,41 @@ class Game:
                 return
             src_cell = self._selected_source
             dst_cell = self.focus_cell
-            # המרה של שני התאים למושגי שחמט
             src_alg = self.board.cell_to_algebraic(src_cell)
             dst_alg = self.board.cell_to_algebraic(dst_cell)
-            print(f"Destination selected at {dst_cell} -> {dst_alg}")
+            print(f"User 1 destination selected at {dst_cell} -> {dst_alg}")
+            piece = self.pos_to_piece.get(src_cell)
+            if piece:
+                cmd = Command(
+                    timestamp=self.game_time_ms(),
+                    piece_id=piece.get_unique(),  # או get_id() לפי מה שמשמש בפקודות
+                    type="move",
+                    params=[src_alg, dst_alg]
+                )
+                self.user_input_queue.put(cmd)
+            self._reset_selection()
+
+    def _on_space_pressed(self):
+        # טיפול בבחירה עבור משתמש שני
+        if self._selection_mode2 == "source":
+            if self.focus_cell2 in self.pos_to_piece:
+                piece = self.pos_to_piece[self.focus_cell2]
+                # בדיקה שהכלי שייך למשתמש השני (מזהה שמתחיל ב-"W")
+                if not piece.get_id()[1] == 'W':
+                    print("User 2 cannot select this piece.")
+                    return
+                src_alg = self.board.cell_to_algebraic(self.focus_cell2)
+                print(f"User 2 source selected at {self.focus_cell2} -> {src_alg}")
+                self._selected_source2 = self.focus_cell2
+                self._selection_mode2 = "dest"
+        elif self._selection_mode2 == "dest":
+            if self._selected_source2 is None:
+                return
+            src_cell = self._selected_source2
+            dst_cell = self.focus_cell2
+            src_alg = self.board.cell_to_algebraic(src_cell)
+            dst_alg = self.board.cell_to_algebraic(dst_cell)
+            print(f"User 2 destination selected at {dst_cell} -> {dst_alg}")
             piece = self.pos_to_piece.get(src_cell)
             if piece:
                 cmd = Command(
@@ -192,9 +260,13 @@ class Game:
                     params=[src_alg, dst_alg]
                 )
                 self.user_input_queue.put(cmd)
-            self._reset_selection()
+            self._reset_selection2()
 
     def _reset_selection(self):
         self._selection_mode = "source"
         self._selected_source = None
+
+    def _reset_selection2(self):
+        self._selection_mode2 = "source"
+        self._selected_source2 = None
 
