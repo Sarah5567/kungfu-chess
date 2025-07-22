@@ -7,6 +7,7 @@ from Moves import Moves
 from PhysicsFactory import PhysicsFactory
 from Piece import Piece
 from State import State
+from Command import Command
 class PieceFactory:
     def __init__(self, board: Board, pieces_root: pathlib.Path):
         self.board = board
@@ -15,7 +16,7 @@ class PieceFactory:
         self._graphics_factory = GraphicsFactory(board)
         self._templates: Dict[str, Piece] = {}
         self.counter = {}
-    def _build_state_machine(self, piece_dir: pathlib.Path,cell: Tuple[int ,int]) -> State:
+    def _build_state_machine(self, piece_dir: pathlib.Path, cell: Tuple[int, int]) -> State:
         """Build a state machine for a piece from its directory."""
         states: Dict[str, State] = {}
         moves = Moves(piece_dir / "moves.txt", (self.board.H_cells, self.board.W_cells))
@@ -27,7 +28,6 @@ class PieceFactory:
             cfg_path = state_dir / "config.json"
             with open(cfg_path, "r") as f:
                 cfg = json.load(f)
-            # dummy_start_cell = (1, 0)
             physics = self._physics_factory.create(
                 state_name,
                 cell,
@@ -45,6 +45,7 @@ class PieceFactory:
         states["jump"].set_transition("short_rest", states["short_rest"])
         states["long_rest"].set_transition("idle", states["idle"])
         states["short_rest"].set_transition("idle", states["idle"])
+        # יצירת ה-state הראשוני תהיה long_rest
         return states["idle"]
     def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
         if p_type not in self._templates:
@@ -59,5 +60,6 @@ class PieceFactory:
         self.counter[p_type] += 1
         unique_id = f"{p_type}_{self.counter[p_type]}"
         # Create and return the piece with the unique id.
-        return Piece(piece_id=unique_id, init_state=init_state)
+        piece = Piece(piece_id=unique_id, init_state=init_state)
+        return piece
 

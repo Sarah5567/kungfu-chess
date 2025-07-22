@@ -121,9 +121,50 @@ class Game:
             # טיפול בפקודות המתינות בתור
             while not self.user_input_queue.empty():
                 cmd = self.user_input_queue.get()
-                cell = self.board.algebraic_to_cell(cmd.params[0])
-                if cell in self.pos_to_piece:
-                    self.pos_to_piece[cell].on_command(cmd, now)
+                src_cell = self.board.algebraic_to_cell(cmd.params[0])
+                dst_cell = self.board.algebraic_to_cell(cmd.params[1])
+                
+                if src_cell not in self.pos_to_piece:
+                    print("Source cell empty. Command ignored.")
+                    continue
+                moving_piece = self.pos_to_piece[src_cell]
+                
+                # בדיקה: אם בתא היעד יש כלי ששייך לאותו שחקן, אין לעבד את הפקודה
+                if dst_cell in self.pos_to_piece:
+                    target_piece = self.pos_to_piece[dst_cell]
+                    if target_piece.get_id()[1] == moving_piece.get_id()[1]:
+                        print("Move blocked: Destination occupied by friendly piece.")
+                        continue
+
+                # בדיקה אם יש חיילים בדרך (נניח תנועה בקו ישר - אופקי, אנכי או אלכסוני)
+                path_clear = True
+                dx = dst_cell[1] - src_cell[1]
+                dy = dst_cell[0] - src_cell[0]
+                # חשב צעדי כיוון (אם אפשר לחשב אותם)
+                if dx != 0:
+                    step_x = dx // abs(dx)
+                else:
+                    step_x = 0
+                if dy != 0:
+                    step_y = dy // abs(dy)
+                else:
+                    step_y = 0
+
+                # נבדוק רק אם התנועה היא בקו ישר
+                if (step_x != 0 or step_y != 0) and (abs(dx) == abs(dy) or dx == 0 or dy == 0):
+                    cur_cell = (src_cell[0] + step_y, src_cell[1] + step_x)
+                    while cur_cell != dst_cell:
+                        if cur_cell in self.pos_to_piece:
+                            path_clear = False
+                            break
+                        cur_cell = (cur_cell[0] + step_y, cur_cell[1] + step_x)
+                # אם אחד מהתנאים לא עובר, מבטלים את הפקודה
+                if not path_clear:
+                    print("Move blocked: Path is obstructed.")
+                    continue
+
+                # אם כל הבדיקות עוברות, נעביר את הפקודה לכלי המתאים
+                self.pos_to_piece[src_cell].on_command(cmd, now)
 
             self._draw()
 
@@ -148,9 +189,12 @@ class Game:
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
                 if (not opponent._state._current_command or 
-                    opponent._state._current_command.type == "idle" or 
-                    opponent._state._physics.start_time > piece._state._physics.start_time):
-                    
+                    opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
+                        (piece._state._current_command and
+                         piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
+                        opponent._state._physics.start_time > piece._state._physics.start_time)):
+                # if piece._state._physics.can_capture() and opponent._state._physics.can_be_captured()
+
                     self.pos_to_piece[pos] = piece
                     to_remove.add(opponent.get_unique())
                 else:

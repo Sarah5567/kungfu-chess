@@ -69,8 +69,8 @@ class MovePhysics(Physics):
         self.end_pos = self.start_pos
         self.start_time = 0
         self.duration_ms = 1
-        self.cmd = None
         self.finished = False
+        self.extra_delay_ms = 300  # הוספת 300ms לאחר סיום התנועה
 
     def reset(self, cmd: Command):
         self.cmd = cmd
@@ -82,7 +82,10 @@ class MovePhysics(Physics):
         self.pos = self.start_pos
         dist = ((self.end_pos[0] - self.start_pos[0]) ** 2 +
                 (self.end_pos[1] - self.start_pos[1]) ** 2) ** 0.5
+        # חישוב הזמן הנדרש בהתבסס על המרחק והמהירות – החלק של התנועה
         self.duration_ms = max(1, int((dist / self.speed) * 1000))
+        # סך כל הזמן כולל העיכוב לאחר התנועה
+        self.total_duration_ms = self.duration_ms + self.extra_delay_ms
         self.start_time = None
 
     def update(self, now_ms: int) -> Command:
@@ -93,24 +96,22 @@ class MovePhysics(Physics):
             self.start_time = now_ms
 
         elapsed = now_ms - self.start_time
-        t = min(1.0, elapsed / self.duration_ms)
-
-        self.pos = (
-            self.start_pos[0] + t * (self.end_pos[0] - self.start_pos[0]),
-            self.start_pos[1] + t * (self.end_pos[1] - self.start_pos[1])
-        )
-
-        if t >= 1.0:
+        if elapsed < self.duration_ms:
+            # תנועה נורמלית עד היעד – המיקום מתעדכן במגמה ליניארית
+            t = elapsed / self.duration_ms
+            self.pos = (
+                self.start_pos[0] + t * (self.end_pos[0] - self.start_pos[0]),
+                self.start_pos[1] + t * (self.end_pos[1] - self.start_pos[1])
+            )
+        elif elapsed < self.total_duration_ms:
+            # סיימנו את התנועה – המיקום קבוע וממתינים לסיום הזמן הכולל
+            self.pos = self.end_pos
+        else:
+            # עבר כל הזמן הכולל – מסמנים סיום החישוב
             self.finished = True
             return self.cmd
 
-        # Return a dummy "in-progress" command
-        # return Command(
-        #     timestamp=now_ms,
-        #     piece_id=self.cmd.piece_id,
-        #     type="long_rest",
-        #     params=[self.end_cell, self.end_cell]
-        # )
+        return None
 
     def can_be_captured(self) -> bool:
         return True
