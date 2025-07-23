@@ -53,7 +53,7 @@ class IdlePhysics(Physics):
         return True
 
     def can_capture(self) -> bool:
-        return True
+        return False
 
 
 from typing import Tuple
@@ -117,7 +117,7 @@ class MovePhysics(Physics):
         return True
 
     def can_capture(self) -> bool:
-        return True
+        return self.pos == self.end_pos
 
     def get_pos(self) -> Tuple[int, int]:
         return self.pos

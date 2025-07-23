@@ -3,7 +3,7 @@ import pathlib
 import time
 import queue
 import cv2
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, List
 import threading
 import keyboard
 from Board import Board
@@ -127,7 +127,7 @@ class Game:
                 if src_cell not in self.pos_to_piece:
                     print("Source cell empty. Command ignored.")
                     continue
-                moving_piece = self.pos_to_piece[src_cell]
+                moving_piece = self.pos_to_piece[src_cell].find()
                 
                 # בדיקה: אם בתא היעד יש כלי ששייך לאותו שחקן, אין לעבד את הפקודה
                 if dst_cell in self.pos_to_piece:
@@ -158,7 +158,7 @@ class Game:
                             path_clear = False
                             break
                         cur_cell = (cur_cell[0] + step_y, cur_cell[1] + step_x)
-                # אם אחד מהתנאים לא עובר, מבטלים את הפקודה
+
                 if not path_clear:
                     print("Move blocked: Path is obstructed.")
                     continue
@@ -188,13 +188,8 @@ class Game:
 
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
-                if (not opponent._state._current_command or 
-                    opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
-                        (piece._state._current_command and
-                         piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
-                        opponent._state._physics.start_time > piece._state._physics.start_time)):
-                # if piece._state._physics.can_capture() and opponent._state._physics.can_be_captured()
-
+                if (piece._state._physics.can_capture() and opponent._state._physics.can_be_captured()
+                        and (not opponent._state._physics.can_capture() or piece._state._physics.start_time < opponent._state._physics.start_time)):
                     self.pos_to_piece[pos] = piece
                     to_remove.add(opponent.get_unique())
                 else:
