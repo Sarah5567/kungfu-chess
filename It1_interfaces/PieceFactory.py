@@ -7,7 +7,7 @@ from Moves import Moves
 from PhysicsFactory import PhysicsFactory
 from Piece import Piece
 from State import State
-from Command import Command
+
 class PieceFactory:
     def __init__(self, board: Board, pieces_root: pathlib.Path):
         self.board = board
@@ -51,10 +51,6 @@ class PieceFactory:
         if p_type not in self._templates:
             piece_dir = self.pieces_root / p_type
             init_state = self._build_state_machine(piece_dir,cell)
-        #     piece = Piece(p_type, init_state)
-        #     self._templates[p_type] = piece
-        # return self._templates[p_type].clone_to(cell, self._physics_factory)
-        # Generate a unique id for the piece.
         if p_type not in self.counter:
             self.counter[p_type] = 0
         self.counter[p_type] += 1

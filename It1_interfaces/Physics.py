@@ -104,10 +104,8 @@ class MovePhysics(Physics):
                 self.start_pos[1] + t * (self.end_pos[1] - self.start_pos[1])
             )
         elif elapsed < self.total_duration_ms:
-            # סיימנו את התנועה – המיקום קבוע וממתינים לסיום הזמן הכולל
             self.pos = self.end_pos
         else:
-            # עבר כל הזמן הכולל – מסמנים סיום החישוב
             self.finished = True
             return self.cmd
 
@@ -137,7 +135,7 @@ class JumpPhysics(Physics):
         return None
 
     def can_be_captured(self) -> bool:
-        return False  # "באוויר"
+        return False
 
     def can_capture(self) -> bool:
         return False

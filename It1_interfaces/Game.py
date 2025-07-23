@@ -23,11 +23,10 @@ class Game:
         self._current_board = None
         self._load_pieces_from_csv(placement_csv)
         self.focus_cell = (0, 0)
-        self._selection_mode = "source"  # עבור משתמש ראשון
+        self._selection_mode = "source"
         self._selected_source: Optional[Tuple[int, int]] = None
 
-        # --- משתנים למשתמש השני ---
-        self.focus_cell2 = (self.board.H_cells - 1, 0)  # התחלה בתחתית
+        self.focus_cell2 = (self.board.H_cells - 1, 0)
         self._selection_mode2 = "source"
         self._selected_source2: Optional[Tuple[int, int]] = None
         
@@ -58,7 +57,6 @@ class Game:
             while self._running:
                 time.sleep(0.05)
                 with self._lock:
-                    # --- טיפול בקלט למשתמש הראשון ---
                     dy, dx = 0, 0
                     if keyboard.is_pressed('esc'):
                         self._running = False
@@ -80,7 +78,6 @@ class Game:
                         self._on_enter_pressed()
                         time.sleep(0.2)
 
-                    # --- טיפול בקלט למשתמש השני ---
                     dy2, dx2 = 0, 0
                     if keyboard.is_pressed('a'):
                         dx2 = -1
@@ -101,7 +98,6 @@ class Game:
         threading.Thread(target=keyboard_loop, daemon=True).start()
 
     def run(self):
-        # אתחול ת’ראד הקלט
         self.start_keyboard_thread()
 
         start_ms = self.game_time_ms()
@@ -111,14 +107,11 @@ class Game:
         while self._running and not self._is_win():
             now = self.game_time_ms()
 
-            # עדכון הכלים
             for piece in self.pieces.values():
                 piece.update(now)
 
-            # עידכון המפה של המיקומים
             self._update_position_mapping()
 
-            # טיפול בפקודות המתינות בתור
             while not self.user_input_queue.empty():
                 cmd = self.user_input_queue.get()
                 src_cell = self.board.algebraic_to_cell(cmd.params[0])
@@ -129,18 +122,15 @@ class Game:
                     continue
                 moving_piece = self.pos_to_piece[src_cell]
                 
-                # בדיקה: אם בתא היעד יש כלי ששייך לאותו שחקן, אין לעבד את הפקודה
                 if dst_cell in self.pos_to_piece:
                     target_piece = self.pos_to_piece[dst_cell]
                     if target_piece.get_id()[1] == moving_piece.get_id()[1]:
                         print("Move blocked: Destination occupied by friendly piece.")
                         continue
 
-                # בדיקה אם יש חיילים בדרך (נניח תנועה בקו ישר - אופקי, אנכי או אלכסוני)
                 path_clear = True
                 dx = dst_cell[1] - src_cell[1]
                 dy = dst_cell[0] - src_cell[0]
-                # חשב צעדי כיוון (אם אפשר לחשב אותם)
                 if dx != 0:
                     step_x = dx // abs(dx)
                 else:
@@ -150,7 +140,6 @@ class Game:
                 else:
                     step_y = 0
 
-                # נבדוק רק אם התנועה היא בקו ישר
                 if (step_x != 0 or step_y != 0) and (abs(dx) == abs(dy) or dx == 0 or dy == 0):
                     cur_cell = (src_cell[0] + step_y, src_cell[1] + step_x)
                     while cur_cell != dst_cell:
@@ -158,18 +147,15 @@ class Game:
                             path_clear = False
                             break
                         cur_cell = (cur_cell[0] + step_y, cur_cell[1] + step_x)
-                # אם אחד מהתנאים לא עובר, מבטלים את הפקודה
                 if not path_clear:
                     print("Move blocked: Path is obstructed.")
                     continue
 
-                # אם כל הבדיקות עוברות, נעביר את הפקודה לכלי המתאים
                 self.pos_to_piece[src_cell].on_command(cmd, now)
 
             self._draw()
 
             cv2.imshow("Chess", self._current_board.img.img)
-            # שימוש ב-waitKey קצר לצורך צביעת החלון בלבד
             cv2.waitKey(1)
 
         self._announce_win()
@@ -228,7 +214,6 @@ class Game:
         for piece in self.pieces.values():
             piece.draw_on_board(board, now_ms)
 
-        # ציור ריבוע פוקוס למשתמש ראשון (צהוב)
         y, x = self.focus_cell
         x1 = x * self.board.cell_W_pix
         y1 = y * self.board.cell_H_pix
@@ -236,7 +221,6 @@ class Game:
         y2 = (y + 1) * self.board.cell_H_pix
         cv2.rectangle(board.img.img, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
-        # ציור ריבוע פוקוס למשתמש שני (כחול)
         y2_, x2_ = self.focus_cell2
         sx1 = x2_ * self.board.cell_W_pix
         sy1 = y2_ * self.board.cell_H_pix
@@ -244,7 +228,6 @@ class Game:
         sy2 = (y2_ + 1) * self.board.cell_H_pix
         cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (255, 0, 0), 2)
 
-        # ציור ריבוע בחירה של המקור עבור משתמש ראשון
         if self._selected_source:
             sy, sx = self._selected_source
             sx1 = sx * self.board.cell_W_pix
@@ -253,7 +236,6 @@ class Game:
             sy2 = (sy + 1) * self.board.cell_H_pix
             cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 0, 255), 2)
 
-        # ציור ריבוע בחירה של המקור עבור משתמש שני
         if self._selected_source2:
             sy, sx = self._selected_source2
             sx1 = sx * self.board.cell_W_pix
@@ -277,11 +259,9 @@ class Game:
             print("Game over.")
 
     def _on_enter_pressed(self):
-        # טיפול בבחירה עבור משתמש ראשון
         if self._selection_mode == "source":
             if self.focus_cell in self.pos_to_piece:
                 piece = self.pos_to_piece[self.focus_cell]
-                # בדיקה שהכלי שייך למשתמש הראשון (מזהה שמתחיל ב-"B")
                 if not piece.get_id()[1] == 'B':
                     print("User 1 cannot select this piece.")
                     return
@@ -301,7 +281,7 @@ class Game:
             if piece:
                 cmd = Command(
                     timestamp=self.game_time_ms(),
-                    piece_id=piece.get_unique(),  # או get_id() לפי מה שמשמש בפקודות
+                    piece_id=piece.get_unique(),
                     type="move",
                     params=[src_alg, dst_alg]
                 )
@@ -309,11 +289,9 @@ class Game:
             self._reset_selection()
 
     def _on_space_pressed(self):
-        # טיפול בבחירה עבור משתמש שני
         if self._selection_mode2 == "source":
             if self.focus_cell2 in self.pos_to_piece:
                 piece = self.pos_to_piece[self.focus_cell2]
-                # בדיקה שהכלי שייך למשתמש השני (מזהה שמתחיל ב-"W")
                 if not piece.get_id()[1] == 'W':
                     print("User 2 cannot select this piece.")
                     return

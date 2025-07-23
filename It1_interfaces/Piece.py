@@ -94,21 +94,19 @@ class Piece:
         Clone this piece to a new piece at a different cell.
         Graphics is copied, physics is recreated (new cell), moves are shared.
         """
-        # מעתיק את הגרפיקה
+
         graphics_copy = self._state._graphics.copy()
 
-        # יוצר פיזיקס חדש – משתמש בנתונים שכבר קיימים באובייקט
+
         state_name = self._state._physics.__class__.__name__.replace("Physics", "").lower()
         speed = getattr(self._state._physics, "speed", 1.0)
-        # אין לנו cfg, אז נבנה מינימלי
+
         cfg = {"physics": {"speed_m_per_sec": speed}}
 
         new_physics = physics_factory.create(state_name, cell, cfg)
 
-        # יוצר סטייט חדש
         new_state = State(self._state._moves, graphics_copy, new_physics)
 
-        # מעתיק את הטרנזישנים הקיימים
         for event, target in self._state.transitions.items():
             new_state.set_transition(event, target)
 
