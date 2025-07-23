@@ -127,7 +127,7 @@ class Game:
                 if src_cell not in self.pos_to_piece:
                     print("Source cell empty. Command ignored.")
                     continue
-                moving_piece = self.pos_to_piece[src_cell].find()
+                moving_piece = self.pos_to_piece[src_cell]
                 
                 # בדיקה: אם בתא היעד יש כלי ששייך לאותו שחקן, אין לעבד את הפקודה
                 if dst_cell in self.pos_to_piece:
