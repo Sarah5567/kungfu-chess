@@ -49,3 +49,5 @@ class Board:
         row_number = str(8 - row)  # assuming 8x8 board
         return f"{col_letter}{row_number}"
 
+    def is_valid_cell(self, x: int, y: int) -> bool:
+        return x % self.cell_W_pix == 0 and y % self.cell_H_pix == 0

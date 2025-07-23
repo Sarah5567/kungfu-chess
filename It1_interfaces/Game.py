@@ -176,12 +176,27 @@ class Game:
         self._running = False
         cv2.destroyAllWindows()
 
+    def get_path_cells(self, src: Tuple[int, int], dst: Tuple[int, int]) -> list[Tuple[int, int]]:
+        path = []
+        dx = dst[1] - src[1]
+        dy = dst[0] - src[0]
+        step_x = dx // abs(dx) if dx != 0 else 0
+        step_y = dy // abs(dy) if dy != 0 else 0
+
+        cur = (src[0] + step_y, src[1] + step_x)
+        while cur != dst:
+            path.append(cur)
+            cur = (cur[0] + step_y, cur[1] + step_x)
+        return path
+
     def _update_position_mapping(self):
         self.pos_to_piece.clear()
         to_remove = set()
 
         for piece in list(self.pieces.values()):  # שימוש ב-list כדי להקפיא את הערכים בזמן הלולאה
             x, y = map(int, piece._state._physics.get_pos())
+            if not self.board.is_valid_cell(x, y):
+                continue
             cell_x = x // self.board.cell_W_pix
             cell_y = y // self.board.cell_H_pix
             pos = (cell_y, cell_x)
