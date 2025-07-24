@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import copy
 from typing import Tuple
 
+import cv2
+
 from img import Img
 
 @dataclass
@@ -51,3 +53,34 @@ class Board:
 
     def is_valid_cell(self, x: int, y: int) -> bool:
         return x % self.cell_W_pix == 0 and y % self.cell_H_pix == 0
+
+    def draw_focus_and_selection(self, board, focus_cell, focus_cell2, selected_source=None, selected_source2=None):
+        y, x = focus_cell
+        x1 = x * self.cell_W_pix
+        y1 = y * self.cell_H_pix
+        x2 = (x + 1) * self.cell_W_pix
+        y2 = (y + 1) * self.cell_H_pix
+        cv2.rectangle(board.img.img, (x1, y1), (x2, y2), (0, 255, 255), 2)
+
+        y2_, x2_ = focus_cell2
+        sx1 = x2_ * self.cell_W_pix
+        sy1 = y2_ * self.cell_H_pix
+        sx2 = (x2_ + 1) * self.cell_W_pix
+        sy2 = (y2_ + 1) * self.cell_H_pix
+        cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (255, 0, 0), 2)
+
+        if selected_source:
+            sy, sx = selected_source
+            sx1 = sx * self.cell_W_pix
+            sy1 = sy * self.cell_H_pix
+            sx2 = (sx + 1) * self.cell_W_pix
+            sy2 = (sy + 1) * self.cell_H_pix
+            cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 0, 255), 2)
+
+        if selected_source2:
+            sy, sx = selected_source2
+            sx1 = sx * self.cell_W_pix
+            sy1 = sy * self.cell_H_pix
+            sx2 = (sx + 1) * self.cell_W_pix
+            sy2 = (sy + 1) * self.cell_H_pix
+            cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 255, 0), 2)

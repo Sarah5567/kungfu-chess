@@ -4,6 +4,7 @@ from Board import Board
 from pathlib import Path
 from Board import Board
 from Game import Game
+from Screen import Screen
 from img import Img
 if __name__ == "__main__":
     # paths
@@ -20,7 +21,11 @@ if __name__ == "__main__":
         H_cells=8,
         img=Img().read("../board.png", size=(640, 640))
     )
-
-    game = Game(board, pieces_root, placement_csv)
+    screen = Screen(
+        width=1028,
+        height=900,
+        board=board,
+        background_color=(50, 50, 50)
+    )
+    game = Game(screen, pieces_root, placement_csv)
     game.run()
-

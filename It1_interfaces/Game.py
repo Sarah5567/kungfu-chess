@@ -9,15 +9,17 @@ import keyboard
 from Board import Board
 from Command import Command
 from Piece import Piece
+from Screen import Screen
 from img import Img
 from PieceFactory import PieceFactory
 
 class Game:
-    def __init__(self, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path):
-        self.board = board
+    def __init__(self, screen: Screen, pieces_root: pathlib.Path, placement_csv: pathlib.Path):
+        self.screen = screen
+        self.board = screen.get_board()
         self.user_input_queue = queue.Queue()
         self.start_time = time.monotonic()
-        self.piece_factory = PieceFactory(board, pieces_root)
+        self.piece_factory = PieceFactory(self.board, pieces_root)
         self.pieces: Dict[str, Piece] = {}
         self.pos_to_piece: Dict[Tuple[int, int], Piece] = {}
         self._current_board = None
@@ -208,41 +210,31 @@ class Game:
 
 
     def _draw(self):
+        # נקה את המסך
+        self.screen.clear()
+        # שיבוט הלוח
         board = self.clone_board()
         now_ms = self.game_time_ms()
 
+        # ציור כל הכלים על הלוח
         for piece in self.pieces.values():
             piece.draw_on_board(board, now_ms)
 
-        y, x = self.focus_cell
-        x1 = x * self.board.cell_W_pix
-        y1 = y * self.board.cell_H_pix
-        x2 = (x + 1) * self.board.cell_W_pix
-        y2 = (y + 1) * self.board.cell_H_pix
-        cv2.rectangle(board.img.img, (x1, y1), (x2, y2), (0, 255, 255), 2)
+        # ציור פוקוס ובחירות על הלוח
+        self.board.draw_focus_and_selection(
+            board,
+            self.focus_cell,
+            self.focus_cell2,
+            self._selected_source,
+            self._selected_source2
+        )
 
-        y2_, x2_ = self.focus_cell2
-        sx1 = x2_ * self.board.cell_W_pix
-        sy1 = y2_ * self.board.cell_H_pix
-        sx2 = (x2_ + 1) * self.board.cell_W_pix
-        sy2 = (y2_ + 1) * self.board.cell_H_pix
-        cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (255, 0, 0), 2)
+        # ציור הלוח על המסך
+        self.screen.board.img = board.img
+        self.screen.draw_board()
 
-        if self._selected_source:
-            sy, sx = self._selected_source
-            sx1 = sx * self.board.cell_W_pix
-            sy1 = sy * self.board.cell_H_pix
-            sx2 = (sx + 1) * self.board.cell_W_pix
-            sy2 = (sy + 1) * self.board.cell_H_pix
-            cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 0, 255), 2)
-
-        if self._selected_source2:
-            sy, sx = self._selected_source2
-            sx1 = sx * self.board.cell_W_pix
-            sy1 = sy * self.board.cell_H_pix
-            sx2 = (sx + 1) * self.board.cell_W_pix
-            sy2 = (sy + 1) * self.board.cell_H_pix
-            cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 255, 0), 2)
+        # הצגת המסך המלא
+        self.screen.show("Chess")
 
         self._current_board = board
 
@@ -325,4 +317,3 @@ class Game:
     def _reset_selection2(self):
         self._selection_mode2 = "source"
         self._selected_source2 = None
-
