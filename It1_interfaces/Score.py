@@ -7,7 +7,7 @@ class Score:
         'N': 3,
         'R': 5,
         'Q': 9,
-
+        'K': 0
     }
     def __init__(self):
         self.score = 0
