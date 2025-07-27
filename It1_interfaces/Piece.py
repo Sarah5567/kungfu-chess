@@ -1,6 +1,3 @@
-import time
-
-from sympy.multipledispatch.dispatcher import source
 
 import PhysicsFactory
 from Board import Board

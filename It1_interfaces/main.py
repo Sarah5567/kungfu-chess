@@ -1,7 +1,4 @@
 from pathlib import Path
-
-from pygame.examples.audiocapture import sounds
-
 from Board import Board
 from img import Img
 from Screen import Screen
