@@ -6,14 +6,16 @@ import cv2
 from typing import Dict, Tuple, Optional
 import threading
 import keyboard
+from sympy.multipledispatch.dispatcher import source
+
 from Board import Board
 from Command import Command
-from EventBus import EventBus
 from Log import Log
 from Piece import Piece
 from Score import Score
 from Screen import Screen
-from img import Img
+from Table import Table
+from EventBus import event_bus
 from PieceFactory import PieceFactory
 
 class Game:
@@ -31,15 +33,22 @@ class Game:
         self._selection_mode = "source"
         self._selected_source: Optional[Tuple[int, int]] = None
 
+
         self.focus_cell2 = (self.board.H_cells - 1, 0)
         self._selection_mode2 = "source"
         self._selected_source2: Optional[Tuple[int, int]] = None
-        
+
         self._lock = threading.Lock()
         self._running = True
 
-        EventBus.subscribe('move', Log.update_log)
-        EventBus.subscribe('capture', Score.update_score)
+        self.black_log: Log = Log()
+        self.white_log: Log = Log()
+        self.black_score: Score = Score()
+        self.white_score: Score = Score()
+        event_bus.subscribe('black_move', self.black_log.update_log)
+        event_bus.subscribe('white_move', self.white_log.update_log)
+        event_bus.subscribe('black_capture', self.black_score.update_score)
+        event_bus.subscribe('white_capture', self.white_score.update_score)
 
 
     def _load_pieces_from_csv(self, csv_path: pathlib.Path):
@@ -125,12 +134,12 @@ class Game:
                 cmd = self.user_input_queue.get()
                 src_cell = self.board.algebraic_to_cell(cmd.params[0])
                 dst_cell = self.board.algebraic_to_cell(cmd.params[1])
-                
+
                 if src_cell not in self.pos_to_piece:
                     print("Source cell empty. Command ignored.")
                     continue
                 moving_piece = self.pos_to_piece[src_cell]
-                
+
                 if dst_cell in self.pos_to_piece:
                     target_piece = self.pos_to_piece[dst_cell]
                     if target_piece.get_id()[1] == moving_piece.get_id()[1]:
@@ -198,17 +207,17 @@ class Game:
 
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
-                if (not opponent._state._current_command or 
+                if (not opponent._state._current_command or
                     opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
                         (piece._state._current_command and
                          piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
                         opponent._state._physics.start_time > piece._state._physics.start_time)):
-                    EventBus.publish('capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id()})
+                    event_bus.publish('black_capture' if piece.get_id()[1] == 'B' else 'white_capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id()})
                     self.pos_to_piece[pos] = piece
                     to_remove.add(opponent.get_id())
                 else:
                     to_remove.add(piece.get_id())
-                    EventBus.publish('capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id()})
+                    event_bus.publish('black_capture' if opponent.get_id()[1] == 'B' else 'white_capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id()})
             else:
                 self.pos_to_piece[pos] = piece
 
@@ -254,7 +263,9 @@ class Game:
             cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 255, 0), 2)
 
         self._current_board = board
-        self.screen.draw(self._current_board)
+        self.screen.update_left(self.black_log.log)
+        self.screen.update_right(self.white_log.log)
+        self.screen.draw(self._current_board, white_score=self.white_score.score, black_score=self.black_score.score)
 
     def _is_win(self) -> bool:
         kings = [p for p in self.pieces.values() if p.get_id().lower().startswith("k")]
@@ -335,4 +346,3 @@ class Game:
     def _reset_selection2(self):
         self._selection_mode2 = "source"
         self._selected_source2 = None
-

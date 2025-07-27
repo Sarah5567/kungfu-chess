@@ -2,19 +2,16 @@ from typing import Any
 from EventBus import Event
 
 class Log:
-    white_log: list[dict[str, Any]] = []
-    black_log: list[dict[str, Any]] = []
+    def __init__(self):
+        self.log: list[dict[str, Any]] = []
 
-    @staticmethod
-    def update_log(event: Event):
+    def update_log(self, event: Event):
         activity = {
             'time': event.data['time'],
             'source': event.data['source'],
             'destination': event.data['destination']
         }
-        if event.data['player'] == 'B':
-            Log.black_log.append(activity)
-            print(f'black player:\n time: {activity['time']} \nsource: {activity['source']} \ndestination: {activity['destination']}')
-        else:
-            Log.white_log.append(activity)
-            print(f'white player:\n time: {activity['time']} \nsource: {activity['source']} \ndestination: {activity['destination']}')
+        if not len(self.log):
+            print('list is empty. If it is not the first time, something went wrong')
+        self.log.append(activity)
+        print(f'log activity {self.log[-1]}')

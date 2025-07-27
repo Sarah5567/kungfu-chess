@@ -1,7 +1,10 @@
+import time
+
 import PhysicsFactory
 from Board import Board
 from Command import Command
-from EventBus import EventBus
+from EventBus import event_bus
+from Log import Log
 from State import State
 from typing import Optional
 import cv2
@@ -16,8 +19,8 @@ class Piece:
     def on_command(self, cmd: Command, now_ms: int):
         if self.is_command_possible(cmd):
             if cmd.type == "move":
-                EventBus.publish('move', {'player': cmd.piece_id[1], 'time': now_ms, 'source': cmd.params[0], 'destination': cmd.params[1]})
-            self._current_cmd = cmd
+                event_bus.publish('black_move' if self._id[1] == 'B' else 'white_move', {'player': cmd.piece_id[1], 'time': now_ms, 'source': cmd.params[0], 'destination': cmd.params[1]})
+                self._current_cmd = cmd
             self._state = self._state.process_command(cmd, now_ms)
 
     def is_command_possible(self, cmd: Command) -> bool:

@@ -18,7 +18,7 @@ if __name__ == "__main__":
         img=Img().read("../board.png", size=(640, 640))
     )
 
-    screen = Screen(screen_size=(900, 1280), bg_color=(200, 200, 200))
+    screen = Screen(['time', 'source', 'destination'],screen_size=(1000, 1500), bg_color=(200, 200, 200))
 
     from Game import Game
     game = Game(screen, board, pieces_root, placement_csv)
