@@ -55,10 +55,11 @@ class Game:
         event_bus.subscribe('white_move', self.play_sounds)
         event_bus.subscribe('black_capture', self.play_sounds)
         event_bus.subscribe('white_capture', self.play_sounds)
+        event_bus.subscribe('jump', self.play_sounds)
+
 
     def play_sounds(self, event : Event):
         def _play():
-            time.sleep(0.5)
             playsound(str(self._sounds_root / event.data['sound']))
 
         threading.Thread(target=_play, daemon=True).start()
