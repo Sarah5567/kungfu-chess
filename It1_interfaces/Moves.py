@@ -28,4 +28,3 @@ class Moves:
             if 0 <= new_r < self.dims[0] and 0 <= new_c < self.dims[1]:
                 possible_moves.append((new_r, new_c))
         return possible_moves
-

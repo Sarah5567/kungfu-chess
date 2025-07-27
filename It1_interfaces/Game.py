@@ -211,9 +211,9 @@ class Game:
     def _update_position_mapping(self):
         self.pos_to_piece.clear()
         to_remove = set()
-        to_promote = []  # נאסוף כאן את החיילים שצריכים להפוך למלכה
+        to_promote = []  # Collect here the pawns that need to be promoted to queen
 
-        for piece in list(self.pieces.values()):  # שימוש ב-list כדי להקפיא את הערכים בזמן הלולאה
+        for piece in list(self.pieces.values()):  # Use list to freeze values during loop
             x, y = map(int, piece._state._physics.get_pos())
             if not self.board.is_valid_cell(x, y):
                 continue
@@ -245,15 +245,15 @@ class Game:
             else:
                 self.pos_to_piece[pos] = piece
 
-            # במקום לבצע כאן את ההמרה, נשמור אותה לטיפול אחרי הלולאה
+            # Instead of promoting here, save for after the loop
             if piece.get_id()[0] == 'P' and (pos[0] == 0 or pos[0] == 7):
                 to_promote.append((piece.get_id(), pos))
 
-        # מחיקת כלים שאכלו אותם
+        # Remove captured pieces
         for k in to_remove:
             self.pieces.pop(k, None)
 
-        # טיפול בהפיכה למלכה לאחר שכל האכילות הושלמו
+        # Handle promotion to queen after all captures are done
         for pawn_id, pos in to_promote:
             if pawn_id in self.pieces:
                 new_queen = self.piece_factory.create_piece('Q' + self.pieces[pawn_id].get_id()[1], pos)

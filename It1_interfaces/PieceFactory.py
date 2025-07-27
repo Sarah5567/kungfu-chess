@@ -45,7 +45,7 @@ class PieceFactory:
         states["jump"].set_transition("short_rest", states["short_rest"])
         states["long_rest"].set_transition("idle", states["idle"])
         states["short_rest"].set_transition("idle", states["idle"])
-        # יצירת ה-state הראשוני תהיה long_rest
+        # The initial state will be long_rest
         return states["idle"]
     def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
         if p_type not in self._templates:
@@ -58,4 +58,3 @@ class PieceFactory:
         # Create and return the piece with the unique id.
         piece = Piece(piece_id=unique_id, init_state=init_state)
         return piece
-

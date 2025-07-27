@@ -8,8 +8,8 @@ class Table:
                  cell_size=(120, 40),
                  text_color=(0, 0, 0), bg_color=(255, 255, 255)):
         """
-        :param headers: שמות העמודות
-        :param max_rows: מספר השורות המקסימלי (לא כולל השורה של הכותרות)
+        :param headers: Column names
+        :param max_rows: Maximum number of rows (excluding the header row)
         """
         self.headers = headers
         self.max_rows = max_rows
@@ -17,23 +17,23 @@ class Table:
         self.text_color = text_color
         self.bg_color = bg_color
 
-        # נתונים ריקים בהתחלה
+        # Empty data at start
         self.rows: List[List[str]] = []
         self._img = self._create_table_img()
 
     def update_data(self, rows: List[List[str]]):
-        """עדכון נתונים חדשים (לא כולל הכותרות)"""
-        self.rows = rows[-self.max_rows:]  # לוקח את ה־max_rows האחרונים
+        """Update new data (excluding headers)"""
+        self.rows = rows[-self.max_rows:]  # Take the last max_rows
         self._img = self._create_table_img()
 
     def _create_table_img(self):
-        total_rows = self.max_rows + 1  # כולל שורת הכותרות
+        total_rows = self.max_rows + 1  # Including the header row
         cols = len(self.headers)
 
         img = np.full((total_rows * self.cell_h, cols * self.cell_w, 3),
                       self.bg_color, dtype=np.uint8)
 
-        # ציור כותרות
+        # Draw headers
         for j, text in enumerate(self.headers):
             x = j * self.cell_w
             y = 0
@@ -41,8 +41,7 @@ class Table:
             cv2.putText(img, str(text), (x + 5, y + int(self.cell_h * 0.7)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.text_color, 1)
 
-        # ציור שורות
-        # ציור שורות
+        # Draw rows
         for i in range(self.max_rows):
             for j in range(len(self.headers)):
                 x = j * self.cell_w
