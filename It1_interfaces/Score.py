@@ -4,9 +4,10 @@ class Score:
     _piece_score = {
         'P': 1,
         'B': 3,
-        'K': 3,
+        'N': 3,
         'R': 5,
         'Q': 9,
+
     }
     def __init__(self):
         self.score = 0
