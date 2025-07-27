@@ -223,6 +223,8 @@ class Game:
 
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
+                if piece._state._current_command and piece._state._current_command.type == 'jump':
+                    continue
                 if (not opponent._state._current_command or
                         opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
                         (piece._state._current_command and

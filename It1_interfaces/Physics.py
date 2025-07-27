@@ -124,9 +124,11 @@ class MovePhysics(Physics):
 class JumpPhysics(Physics):
     def reset(self, cmd: Command):
         super().reset(cmd)
-        self.jump_duration = 1000  # 1 sec jump duration
+        self.jump_duration = 1000
         self.start_time = None
-
+        self.start_cell = self.board.algebraic_to_cell(cmd.params[0])
+        self.end_cell = self.board.algebraic_to_cell(cmd.params[1])
+        self.pos = self.board.cell_to_world(self.end_cell)
     def update(self, now_ms: int) -> Command:
         if self.start_time is None:
             self.start_time = now_ms
@@ -134,13 +136,10 @@ class JumpPhysics(Physics):
             self.finished = True
             return self.cmd
         return None
-
     def can_be_captured(self) -> bool:
         return False
-
     def can_capture(self) -> bool:
         return False
-
 
 class ShortRestPhysics(Physics):
     def reset(self, cmd: Command):
@@ -149,12 +148,10 @@ class ShortRestPhysics(Physics):
         self.start_time = None
         self.start_cell = tuple(cmd.params[0])
         self.pos = self.board.cell_to_world(self.start_cell)
-
     def update(self, now_ms: int) -> Command:
         if self.start_time is None:
             self.start_time = now_ms
         if now_ms - self.start_time >= self.rest_duration:
-            self.finished = True
             return Command(
                 timestamp=now_ms,
                 piece_id=self.cmd.piece_id,
@@ -162,13 +159,10 @@ class ShortRestPhysics(Physics):
                 params=[self.start_cell, self.start_cell]
             )
         return None
-
     def can_be_captured(self) -> bool:
         return True
-
     def can_capture(self) -> bool:
         return False
-
 
 class LongRestPhysics(Physics):
     def reset(self, cmd: Command):
