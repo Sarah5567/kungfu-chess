@@ -1,5 +1,3 @@
-from numba.cuda.cudadrv.nvvm import cas_nvvm
-
 import PhysicsFactory
 from Board import Board
 from Command import Command
