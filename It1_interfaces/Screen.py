@@ -40,10 +40,10 @@ class Screen:
              spacing=20,
              white_score: int = 0,
              black_score: int = 0):
-        """מצייר את הלוח ואת הטבלאות עם ניקוד"""
+        """Draws the board, tables, and scores"""
         self._img[:, :] = self._bg_color
 
-        # ציור הלוח
+        # Draw the board
         board_offset_x = 0
         board_offset_y = 0
         bh, bw = 0, 0
@@ -52,15 +52,15 @@ class Screen:
             if board_img.shape[2] == 4:
                 board_img = cv2.cvtColor(board_img, cv2.COLOR_BGRA2BGR)
             bh, bw = board_img.shape[:2]
-            board_offset_y = (self._screen_h - bh) // 2
+            board_offset_y = (self._screen_h - bh) // 2 - 50
             board_offset_x = (self._screen_w - bw) // 2
             self._img[board_offset_y:board_offset_y + bh, board_offset_x:board_offset_x + bw] = board_img
 
-        # --- טבלה שמאלית (שחקן שחור) ---
+        # --- Left Table (Black Player) ---
         if self.left_table is not None:
             l_img = self.left_table.img
             lh, lw = l_img.shape[:2]
-            ly = board_offset_y + (bh - lh) // 2
+            ly = board_offset_y + (bh - lh) // 2 - 10
             lx = board_offset_x - lw - spacing
             if lx >= 0:
                 self._img[ly:ly + lh, lx:lx + lw] = l_img
@@ -71,23 +71,23 @@ class Screen:
                 title_size = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
                 score_size = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
 
-                # ציור כותרת
+                # Draw title
                 title_x = lx + (lw - title_size[0]) // 2
-                title_y = max(5, ly - 60)
+                title_y = max(5, ly - 50)
                 cv2.putText(self._img, title, (title_x, title_y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
 
-                # ציור ניקוד – אם אין מקום למטה, יצויר מעל הטבלה
+                # Draw score
                 score_x = lx + (lw - score_size[0]) // 2
-                score_y = ly + lh + score_size[1] - 670
+                score_y = ly + lh + score_size[1] - 675
                 cv2.putText(self._img, score_text, (score_x, score_y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
 
-        # --- טבלה ימנית (שחקן לבן) ---
+        # --- Right Table (White Player) ---
         if self.right_table is not None:
             r_img = self.right_table.img
             rh, rw = r_img.shape[:2]
-            ry = board_offset_y + (bh - rh) // 2
+            ry = board_offset_y + (bh - rh) // 2 - 10
             rx = board_offset_x + bw + spacing
             if rx + rw <= self._screen_w:
                 self._img[ry:ry + rh, rx:rx + rw] = r_img
@@ -99,12 +99,12 @@ class Screen:
                 score_size = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
 
                 title_x = rx + (rw - title_size[0]) // 2
-                title_y = max(5, ry - 60)
+                title_y = max(5, ry - 50)
                 cv2.putText(self._img, title, (title_x, title_y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
 
                 score_x = rx + (rw - score_size[0]) // 2
-                score_y = ry + rh + score_size[1] - 670
+                score_y = ry + rh + score_size[1] - 675
                 if score_y + 5 < self._screen_h:
                     cv2.putText(self._img, score_text, (score_x, score_y),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
