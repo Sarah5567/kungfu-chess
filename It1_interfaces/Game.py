@@ -82,54 +82,8 @@ class Game:
     def clone_board(self) -> Board:
         return self.board.clone()
 
-    def start_keyboard_thread(self):
-        def keyboard_loop():
-            while self._running:
-                time.sleep(0.05)
-                with self._lock:
-                    dy, dx = 0, 0
-                    if keyboard.is_pressed('esc'):
-                        self._running = False
-                        break
-                    if keyboard.is_pressed('left'):
-                        dx = -1
-                    elif keyboard.is_pressed('right'):
-                        dx = 1
-                    if keyboard.is_pressed('up'):
-                        dy = -1
-                    elif keyboard.is_pressed('down'):
-                        dy = 1
-                    if dx != 0 or dy != 0:
-                        h, w = self.board.H_cells, self.board.W_cells
-                        y, x = self.focus_cell
-                        self.focus_cell = ((y + dy) % h, (x + dx) % w)
-                        time.sleep(0.2)
-                    if keyboard.is_pressed('enter'):
-                        self._on_enter_pressed()
-                        time.sleep(0.2)
-
-                    dy2, dx2 = 0, 0
-                    if keyboard.is_pressed('a'):
-                        dx2 = -1
-                    elif keyboard.is_pressed('d'):
-                        dx2 = 1
-                    if keyboard.is_pressed('w'):
-                        dy2 = -1
-                    elif keyboard.is_pressed('s'):
-                        dy2 = 1
-                    if dx2 != 0 or dy2 != 0:
-                        h, w = self.board.H_cells, self.board.W_cells
-                        y2, x2 = self.focus_cell2
-                        self.focus_cell2 = ((y2 + dy2) % h, (x2 + dx2) % w)
-                        time.sleep(0.2)
-                    if keyboard.is_pressed('space'):
-                        self._on_space_pressed()
-                        time.sleep(0.2)
-        threading.Thread(target=keyboard_loop, daemon=True).start()
-
     def run(self):
         self.start_keyboard_thread()
-
         start_ms = self.game_time_ms()
         for piece in self.pieces.values():
             piece.reset(start_ms)
@@ -142,49 +96,7 @@ class Game:
 
             self._update_position_mapping()
 
-            while not self.user_input_queue.empty():
-                cmd = self.user_input_queue.get()
-                src_cell = self.board.algebraic_to_cell(cmd.params[0])
-                dst_cell = self.board.algebraic_to_cell(cmd.params[1])
-
-                if src_cell not in self.pos_to_piece:
-                    print("Source cell empty. Command ignored.")
-                    continue
-                moving_piece = self.pos_to_piece[src_cell]
-
-                dst_empty : bool = True
-                if dst_cell in self.pos_to_piece:
-                    target_piece = self.pos_to_piece[dst_cell]
-                    if target_piece.get_id()[1] == moving_piece.get_id()[1] and target_piece.get_id() != moving_piece.get_id():
-                        print("Move blocked: Destination occupied by friendly piece.")
-                        continue
-                    else:
-                        dst_empty = False
-
-                path_clear = True
-                dx = dst_cell[1] - src_cell[1]
-                dy = dst_cell[0] - src_cell[0]
-                if dx != 0:
-                    step_x = dx // abs(dx)
-                else:
-                    step_x = 0
-                if dy != 0:
-                    step_y = dy // abs(dy)
-                else:
-                    step_y = 0
-
-                if (step_x != 0 or step_y != 0) and (abs(dx) == abs(dy) or dx == 0 or dy == 0):
-                    cur_cell = (src_cell[0] + step_y, src_cell[1] + step_x)
-                    while cur_cell != dst_cell:
-                        if cur_cell in self.pos_to_piece:
-                            path_clear = False
-                            break
-                        cur_cell = (cur_cell[0] + step_y, cur_cell[1] + step_x)
-                if not path_clear:
-                    print("Move blocked: Path is obstructed.")
-                    continue
-
-                self.pos_to_piece[src_cell].on_command(cmd, now, dst_empty)
+            self._process_user_commands(now)
 
             self._draw()
 
@@ -195,18 +107,152 @@ class Game:
         self._running = False
         cv2.destroyAllWindows()
 
-    def get_path_cells(self, src: Tuple[int, int], dst: Tuple[int, int]) -> list[Tuple[int, int]]:
-        path = []
-        dx = dst[1] - src[1]
-        dy = dst[0] - src[0]
+    def _process_user_commands(self, now):
+        while not self.user_input_queue.empty():
+            cmd = self.user_input_queue.get()
+            src_cell = self.board.algebraic_to_cell(cmd.params[0])
+            dst_cell = self.board.algebraic_to_cell(cmd.params[1])
+
+            if not self._is_move_legal(src_cell, dst_cell):
+                continue
+            dst_empty = dst_cell not in self.pos_to_piece
+            self.pos_to_piece[src_cell].on_command(cmd, now, dst_empty)
+
+    def _is_move_legal(self, src_cell, dst_cell):
+        if src_cell not in self.pos_to_piece:
+            print("Source cell empty. Command ignored.")
+            return False
+        moving_piece = self.pos_to_piece[src_cell]
+        if dst_cell in self.pos_to_piece:
+            target_piece = self.pos_to_piece[dst_cell]
+            if target_piece.get_id()[1] == moving_piece.get_id()[1] and target_piece.get_id() != moving_piece.get_id():
+                print("Move blocked: Destination occupied by friendly piece.")
+                return False
+        if not self._is_path_clear(src_cell, dst_cell):
+            print("Move blocked: Path is obstructed.")
+            return False
+        return True
+
+    def _is_path_clear(self, src_cell, dst_cell):
+        dx = dst_cell[1] - src_cell[1]
+        dy = dst_cell[0] - src_cell[0]
         step_x = dx // abs(dx) if dx != 0 else 0
         step_y = dy // abs(dy) if dy != 0 else 0
+        if (step_x != 0 or step_y != 0) and (abs(dx) == abs(dy) or dx == 0 or dy == 0):
+            cur_cell = (src_cell[0] + step_y, src_cell[1] + step_x)
+            while cur_cell != dst_cell:
+                if cur_cell in self.pos_to_piece:
+                    return False
+                cur_cell = (cur_cell[0] + step_y, cur_cell[1] + step_x)
+        return True
 
-        cur = (src[0] + step_y, src[1] + step_x)
-        while cur != dst:
-            path.append(cur)
-            cur = (cur[0] + step_y, cur[1] + step_x)
-        return path
+    def start_keyboard_thread(self):
+        def keyboard_loop():
+            while self._running:
+                time.sleep(0.05)
+                with self._lock:
+                    self._handle_keyboard_input()
+        threading.Thread(target=keyboard_loop, daemon=True).start()
+
+    def _handle_keyboard_input(self):
+        self._handle_focus_movement('arrow', self.focus_cell, self._on_enter_pressed)
+        self._handle_focus_movement('wasd', self.focus_cell2, self._on_space_pressed)
+
+    def _handle_focus_movement(self, mode, focus_cell, on_select_callback):
+        dy, dx = 0, 0
+        if mode == 'arrow':
+            if keyboard.is_pressed('esc'):
+                self._running = False
+                return
+            if keyboard.is_pressed('left'):
+                dx = -1
+            elif keyboard.is_pressed('right'):
+                dx = 1
+            if keyboard.is_pressed('up'):
+                dy = -1
+            elif keyboard.is_pressed('down'):
+                dy = 1
+            if dx != 0 or dy != 0:
+                self.focus_cell = self._move_focus(self.focus_cell, dy, dx)
+                time.sleep(0.2)
+            if keyboard.is_pressed('enter'):
+                on_select_callback()
+                time.sleep(0.2)
+        elif mode == 'wasd':
+            if keyboard.is_pressed('a'):
+                dx = -1
+            elif keyboard.is_pressed('d'):
+                dx = 1
+            if keyboard.is_pressed('w'):
+                dy = -1
+            elif keyboard.is_pressed('s'):
+                dy = 1
+            if dx != 0 or dy != 0:
+                self.focus_cell2 = self._move_focus(self.focus_cell2, dy, dx)
+                time.sleep(0.2)
+            if keyboard.is_pressed('space'):
+                on_select_callback()
+                time.sleep(0.2)
+
+    def _move_focus(self, focus_cell, dy, dx):
+        h, w = self.board.H_cells, self.board.W_cells
+        y, x = focus_cell
+        return ((y + dy) % h, (x + dx) % w)
+
+    def _announce_win(self):
+        if len(self.pieces) == 0:
+            print("Draw.")
+        elif len(self.pieces) == 1:
+            print(f"{list(self.pieces.values())[0].get_id()} wins!")
+        else:
+            print("Game over.")
+
+    def _on_enter_pressed(self):
+        self._handle_selection(
+            self.focus_cell,
+            self._selection_mode,
+            self._selected_source,
+            'B',
+            self._reset_selection,
+            self.user_input_queue
+        )
+
+    def _on_space_pressed(self):
+        self._handle_selection(
+            self.focus_cell2,
+            self._selection_mode2,
+            self._selected_source2,
+            'W',
+            self._reset_selection2,
+            self.user_input_queue
+        )
+
+    def _handle_selection(self, focus_cell, selection_mode, selected_source, player_color, reset_selection, input_queue):
+        if selection_mode == "source":
+            if focus_cell in self.pos_to_piece:
+                piece = self.pos_to_piece[focus_cell]
+                if not piece.get_id()[1] == player_color:
+                    print(f"User cannot select this piece.")
+                    return
+                src_alg = self.board.cell_to_algebraic(focus_cell)
+                print(f"Source selected at {focus_cell} -> {src_alg}")
+                if player_color == 'B':
+                    self._selected_source = focus_cell
+                    self._selection_mode = "dest"
+                else:
+                    self._selected_source2 = focus_cell
+                    self._selection_mode2 = "dest"
+        elif selection_mode == "dest":
+            if selected_source is None:
+                return
+            src_cell = selected_source
+            dst_cell = focus_cell
+            src_alg = self.board.cell_to_algebraic(src_cell)
+            dst_alg = self.board.cell_to_algebraic(dst_cell)
+            print(f"Destination selected at {dst_cell} -> {dst_alg}")
+            piece = self.pos_to_piece.get(src_cell)
+            if piece:
+                cmd_type = "jump" if src_cell == dst_cell else "move"
 
     def _update_position_mapping(self):
         self.pos_to_piece.clear()
