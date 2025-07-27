@@ -147,41 +147,22 @@ class Game:
                 src_cell = self.board.algebraic_to_cell(cmd.params[0])
                 dst_cell = self.board.algebraic_to_cell(cmd.params[1])
 
-                if src_cell not in self.pos_to_piece:
-                    print("Source cell empty. Command ignored.")
-                    continue
-                moving_piece = self.pos_to_piece[src_cell]
-
-                if dst_cell in self.pos_to_piece:
-                    target_piece = self.pos_to_piece[dst_cell]
-                    if target_piece.get_id()[1] == moving_piece.get_id()[1]:
-                        print("Move blocked: Destination occupied by friendly piece.")
-                        continue
-
-                path_clear = True
-                dx = dst_cell[1] - src_cell[1]
-                dy = dst_cell[0] - src_cell[0]
-                if dx != 0:
-                    step_x = dx // abs(dx)
-                else:
-                    step_x = 0
-                if dy != 0:
-                    step_y = dy // abs(dy)
-                else:
-                    step_y = 0
-
-                if (step_x != 0 or step_y != 0) and (abs(dx) == abs(dy) or dx == 0 or dy == 0):
-                    cur_cell = (src_cell[0] + step_y, src_cell[1] + step_x)
-                    while cur_cell != dst_cell:
-                        if cur_cell in self.pos_to_piece:
-                            path_clear = False
+                # בדיקת חוקיות הצעד דרך moves בלבד
+                piece = None
+                if src_cell in self.pos_to_piece:
+                    for p in self.pos_to_piece[src_cell]:
+                        if p.get_id() == cmd.piece_id:
+                            piece = p
                             break
-                        cur_cell = (cur_cell[0] + step_y, cur_cell[1] + step_x)
-                if not path_clear:
-                    print("Move blocked: Path is obstructed.")
+                if not piece:
+                    print("Source cell empty or piece not found. Command ignored.")
                     continue
 
-                self.pos_to_piece[src_cell].on_command(cmd, now)
+                if not piece.moves.is_move_legal(src_cell, dst_cell, self.pos_to_piece, piece):
+                    print("Move is not legal.")
+                    continue
+
+                piece.on_command(cmd, now, self.pos_to_piece)
 
             self._draw()
 
@@ -192,24 +173,11 @@ class Game:
         self._running = False
         cv2.destroyAllWindows()
 
-    def get_path_cells(self, src: Tuple[int, int], dst: Tuple[int, int]) -> list[Tuple[int, int]]:
-        path = []
-        dx = dst[1] - src[1]
-        dy = dst[0] - src[0]
-        step_x = dx // abs(dx) if dx != 0 else 0
-        step_y = dy // abs(dy) if dy != 0 else 0
-
-        cur = (src[0] + step_y, src[1] + step_x)
-        while cur != dst:
-            path.append(cur)
-            cur = (cur[0] + step_y, cur[1] + step_x)
-        return path
-
     def _update_position_mapping(self):
         self.pos_to_piece.clear()
         to_remove = set()
 
-        for piece in list(self.pieces.values()):  # שימוש ב-list כדי להקפיא את הערכים בזמן הלולאה
+        for piece in list(self.pieces.values()):
             x, y = map(int, piece._state._physics.get_pos())
             if not self.board.is_valid_cell(x, y):
                 continue
@@ -220,16 +188,20 @@ class Game:
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
                 if (not opponent._state._current_command or
-                    opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
+                        opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
                         (piece._state._current_command and
                          piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
-                        opponent._state._physics.start_time > piece._state._physics.start_time)):
-                    event_bus.publish('black_capture' if piece.get_id()[1] == 'B' else 'white_capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'})
+                         opponent._state._physics.start_time > piece._state._physics.start_time)):
+                    event_bus.publish('black_capture' if piece.get_id()[1] == 'B' else 'white_capture',
+                                      {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(),
+                                       'sound': 'capture.wav'})
                     self.pos_to_piece[pos] = piece
                     to_remove.add(opponent.get_id())
                 else:
                     to_remove.add(piece.get_id())
-                    event_bus.publish('black_capture' if opponent.get_id()[1] == 'B' else 'white_capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(), 'sound': 'capture.wav'})
+                    event_bus.publish('black_capture' if opponent.get_id()[1] == 'B' else 'white_capture',
+                                      {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(),
+                                       'sound': 'capture.wav'})
             else:
                 self.pos_to_piece[pos] = piece
 
@@ -294,8 +266,13 @@ class Game:
     def _on_enter_pressed(self):
         if self._selection_mode == "source":
             if self.focus_cell in self.pos_to_piece:
-                piece = self.pos_to_piece[self.focus_cell]
-                if not piece.get_id()[1] == 'B':
+                # בודק שיש כלי מתאים בתא
+                found = False
+                for piece in self.pos_to_piece[self.focus_cell]:
+                    if piece.get_id()[1] == 'B':
+                        found = True
+                        break
+                if not found:
                     print("User 1 cannot select this piece.")
                     return
                 src_alg = self.board.cell_to_algebraic(self.focus_cell)
@@ -310,22 +287,39 @@ class Game:
             src_alg = self.board.cell_to_algebraic(src_cell)
             dst_alg = self.board.cell_to_algebraic(dst_cell)
             print(f"User 1 destination selected at {dst_cell} -> {dst_alg}")
-            piece = self.pos_to_piece.get(src_cell)
+            piece = None
+            if src_cell in self.pos_to_piece:
+                for p in self.pos_to_piece[src_cell]:
+                    if p.get_id()[1] == 'B':
+                        piece = p
+                        break
             if piece:
-                cmd = Command(
-                    timestamp=self.game_time_ms(),
-                    piece_id=piece.get_id(),
-                    type="move",
-                    params=[src_alg, dst_alg]
-                )
+                if src_cell == dst_cell:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="jump",
+                        params=[src_alg, dst_alg]
+                    )
+                else:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="move",
+                        params=[src_alg, dst_alg]
+                    )
                 self.user_input_queue.put(cmd)
             self._reset_selection()
 
     def _on_space_pressed(self):
         if self._selection_mode2 == "source":
             if self.focus_cell2 in self.pos_to_piece:
-                piece = self.pos_to_piece[self.focus_cell2]
-                if not piece.get_id()[1] == 'W':
+                found = False
+                for piece in self.pos_to_piece[self.focus_cell2]:
+                    if piece.get_id()[1] == 'W':
+                        found = True
+                        break
+                if not found:
                     print("User 2 cannot select this piece.")
                     return
                 src_alg = self.board.cell_to_algebraic(self.focus_cell2)
@@ -340,14 +334,27 @@ class Game:
             src_alg = self.board.cell_to_algebraic(src_cell)
             dst_alg = self.board.cell_to_algebraic(dst_cell)
             print(f"User 2 destination selected at {dst_cell} -> {dst_alg}")
-            piece = self.pos_to_piece.get(src_cell)
+            piece = None
+            if src_cell in self.pos_to_piece:
+                for p in self.pos_to_piece[src_cell]:
+                    if p.get_id()[1] == 'W':
+                        piece = p
+                        break
             if piece:
-                cmd = Command(
-                    timestamp=self.game_time_ms(),
-                    piece_id=piece.get_id(),
-                    type="move",
-                    params=[src_alg, dst_alg]
-                )
+                if src_cell == dst_cell:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="jump",
+                        params=[src_alg, dst_alg]
+                    )
+                else:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="move",
+                        params=[src_alg, dst_alg]
+                    )
                 self.user_input_queue.put(cmd)
             self._reset_selection2()
 

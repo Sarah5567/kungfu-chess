@@ -1,11 +1,11 @@
-
 import PhysicsFactory
 from Board import Board
 from Command import Command
 from EventBus import event_bus
-from Log import Log
 from State import State
-from typing import Optional
+from typing import Optional, Dict, Tuple, TYPE_CHECKING
+if TYPE_CHECKING:
+    from Moves import Moves
 import cv2
 
 class Piece:
@@ -13,30 +13,20 @@ class Piece:
         self._id = piece_id
         self._state = init_state
         self._current_cmd: Optional[Command] = None
+        self.moves: "Moves" = init_state._moves  # type: ignore
 
-
-    def on_command(self, cmd: Command, now_ms: int):
-        if self.is_command_possible(cmd):
-            if cmd.type == "move":
-                self.publish_move('black_move' if self._id[1] == 'B' else 'white_move', cmd, now_ms)
-                self._current_cmd = cmd
-            self._state = self._state.process_command(cmd, now_ms)
-
-    def publish_move(self, event_name : str, cmd : Command, now_ms : int):
-        player : str = cmd.piece_id[1]
-        source_cell : str = cmd.params[0]
-        destination_cell : str = cmd.params[1]
-        event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
-
-    def is_command_possible(self, cmd: Command) -> bool:
+    def on_command(self, cmd: Command, now_ms: int, pos_to_piece: Dict[Tuple[int, int], list]):
+        # Piece לא בודק חוקיות, רק מבצע פקודה
         if cmd.type == "move":
-            src = self._state._physics.start_cell
-            dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
-            legal = self._state._moves.get_moves(*src)
-            if dst not in legal:
-                return False
+            self.publish_move('black_move' if self._id[1] == 'B' else 'white_move', cmd, now_ms)
+            self._current_cmd = cmd
+        self._state = self._state.process_command(cmd, now_ms)
 
-        return cmd is not None and cmd.type in self._state.transitions
+    def publish_move(self, event_name: str, cmd: Command, now_ms: int):
+        player: str = cmd.piece_id[1]
+        source_cell: str = cmd.params[0]
+        destination_cell: str = cmd.params[1]
+        event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
 
     def reset(self, start_ms: int):
         if self._current_cmd:
@@ -45,10 +35,10 @@ class Piece:
     def update(self, now_ms: int):
         self._state = self._state.update(now_ms)
         if self._state._physics.finished:
-            next_state =  next(iter(self._state.transitions.keys()))
+            next_state = next(iter(self._state.transitions.keys()))
             new_cell = self._state._physics.get_pos_in_cell()
             cmd = Command(now_ms, self._id, next_state, [new_cell, new_cell])
-            self.on_command(cmd, now_ms)
+            self.on_command(cmd, now_ms, {})  # מעבירים מיפוי ריק אם אין מידע
 
     def draw_on_board(self, board: Board, now_ms: int):
         pos = self._state._physics.get_pos()
@@ -100,7 +90,6 @@ class Piece:
         """
 
         graphics_copy = self._state._graphics.copy()
-
 
         state_name = self._state._physics.__class__.__name__.replace("Physics", "").lower()
         speed = getattr(self._state._physics, "speed", 1.0)
