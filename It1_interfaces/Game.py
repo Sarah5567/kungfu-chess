@@ -6,21 +6,20 @@ import cv2
 from typing import Dict, Tuple, Optional
 import threading
 import keyboard
-from sympy.multipledispatch.dispatcher import source
-
 from Board import Board
 from Command import Command
 from Log import Log
 from Piece import Piece
 from Score import Score
 from Screen import Screen
-from Table import Table
-from EventBus import event_bus
+from EventBus import event_bus, Event
 from PieceFactory import PieceFactory
+from playsound import playsound
 
 class Game:
-    def __init__(self, screen: Screen, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path):
+    def __init__(self, screen: Screen, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path, sounds_root: pathlib.Path):
         self.screen = screen
+        self._sounds_root = sounds_root
         self.board = board
         self.user_input_queue = queue.Queue()
         self.start_time = time.monotonic()
@@ -45,11 +44,24 @@ class Game:
         self.white_log: Log = Log()
         self.black_score: Score = Score()
         self.white_score: Score = Score()
+        self.subscriptions(sounds_root)
+
+    def subscriptions(self, sounds_root):
         event_bus.subscribe('black_move', self.black_log.update_log)
         event_bus.subscribe('white_move', self.white_log.update_log)
         event_bus.subscribe('black_capture', self.black_score.update_score)
         event_bus.subscribe('white_capture', self.white_score.update_score)
+        event_bus.subscribe('black_move', self.play_sounds)
+        event_bus.subscribe('white_move', self.play_sounds)
+        event_bus.subscribe('black_capture', self.play_sounds)
+        event_bus.subscribe('white_capture', self.play_sounds)
 
+    def play_sounds(self, event : Event):
+        def _play():
+            time.sleep(0.5)
+            playsound(str(self._sounds_root / event.data['sound']))
+
+        threading.Thread(target=_play, daemon=True).start()
 
     def _load_pieces_from_csv(self, csv_path: pathlib.Path):
         with csv_path.open() as f:
@@ -212,12 +224,12 @@ class Game:
                         (piece._state._current_command and
                          piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
                         opponent._state._physics.start_time > piece._state._physics.start_time)):
-                    event_bus.publish('black_capture' if piece.get_id()[1] == 'B' else 'white_capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id()})
+                    event_bus.publish('black_capture' if piece.get_id()[1] == 'B' else 'white_capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'})
                     self.pos_to_piece[pos] = piece
                     to_remove.add(opponent.get_id())
                 else:
                     to_remove.add(piece.get_id())
-                    event_bus.publish('black_capture' if opponent.get_id()[1] == 'B' else 'white_capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id()})
+                    event_bus.publish('black_capture' if opponent.get_id()[1] == 'B' else 'white_capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(), 'sound': 'capture.wav'})
             else:
                 self.pos_to_piece[pos] = piece
 

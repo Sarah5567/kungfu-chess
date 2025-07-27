@@ -1,5 +1,7 @@
 import time
 
+from sympy.multipledispatch.dispatcher import source
+
 import PhysicsFactory
 from Board import Board
 from Command import Command
@@ -19,9 +21,15 @@ class Piece:
     def on_command(self, cmd: Command, now_ms: int):
         if self.is_command_possible(cmd):
             if cmd.type == "move":
-                event_bus.publish('black_move' if self._id[1] == 'B' else 'white_move', {'player': cmd.piece_id[1], 'time': now_ms, 'source': cmd.params[0], 'destination': cmd.params[1]})
+                self.publish_move('black_move' if self._id[1] == 'B' else 'white_move', cmd, now_ms)
                 self._current_cmd = cmd
             self._state = self._state.process_command(cmd, now_ms)
+
+    def publish_move(self, event_name : str, cmd : Command, now_ms : int):
+        player : str = cmd.piece_id[1]
+        source_cell : str = cmd.params[0]
+        destination_cell : str = cmd.params[1]
+        event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
 
     def is_command_possible(self, cmd: Command) -> bool:
         if cmd.type == "move":
