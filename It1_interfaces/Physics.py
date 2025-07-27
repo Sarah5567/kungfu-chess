@@ -70,7 +70,7 @@ class MovePhysics(Physics):
         self.start_time = 0
         self.duration_ms = 1
         self.finished = False
-        self.extra_delay_ms = 300  # הוספת 300ms לאחר סיום התנועה
+        self.extra_delay_ms = 300  # Add 300ms after movement is finished
 
     def reset(self, cmd: Command):
         self.cmd = cmd
@@ -82,9 +82,9 @@ class MovePhysics(Physics):
         self.pos = self.start_pos
         dist = ((self.end_pos[0] - self.start_pos[0]) ** 2 +
                 (self.end_pos[1] - self.start_pos[1]) ** 2) ** 0.5
-        # חישוב הזמן הנדרש בהתבסס על המרחק והמהירות – החלק של התנועה
+        # Calculate the required time based on distance and speed – movement part
         self.duration_ms = max(1, int((dist / self.speed) * 1000))
-        # סך כל הזמן כולל העיכוב לאחר התנועה
+        # Total time including the delay after movement
         self.total_duration_ms = self.duration_ms + self.extra_delay_ms
         self.start_time = None
 
@@ -97,7 +97,7 @@ class MovePhysics(Physics):
 
         elapsed = now_ms - self.start_time
         if elapsed < self.duration_ms:
-            # תנועה נורמלית עד היעד – המיקום מתעדכן במגמה ליניארית
+            # Normal movement until destination – position updates linearly
             t = elapsed / self.duration_ms
             self.pos = (
                 self.start_pos[0] + t * (self.end_pos[0] - self.start_pos[0]),
