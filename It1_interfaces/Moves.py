@@ -1,4 +1,3 @@
-# Moves.py  – drop-in replacement
 import pathlib
 from typing import List, Tuple
 class Moves:

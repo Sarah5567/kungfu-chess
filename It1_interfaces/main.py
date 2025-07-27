@@ -1,12 +1,9 @@
-import csv, pathlib, time, queue, threading, cv2
-from typing import List, Dict, Tuple
-from Board import Board
 from pathlib import Path
 from Board import Board
-from Game import Game
 from img import Img
+from Screen import Screen
+
 if __name__ == "__main__":
-    # paths
     base_path = Path(__file__).resolve().parent
     pieces_root = base_path.parent / "PIECES"
     placement_csv = base_path / "board.csv"
@@ -21,6 +18,8 @@ if __name__ == "__main__":
         img=Img().read("../board.png", size=(640, 640))
     )
 
-    game = Game(board, pieces_root, placement_csv)
-    game.run()
+    screen = Screen(screen_size=(900, 1280), bg_color=(200, 200, 200))
 
+    from Game import Game
+    game = Game(screen, board, pieces_root, placement_csv)
+    game.run()

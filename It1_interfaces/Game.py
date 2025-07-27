@@ -8,16 +8,21 @@ import threading
 import keyboard
 from Board import Board
 from Command import Command
+from EventBus import EventBus
+from Log import Log
 from Piece import Piece
+from Score import Score
+from Screen import Screen
 from img import Img
 from PieceFactory import PieceFactory
 
 class Game:
-    def __init__(self, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path):
+    def __init__(self, screen: Screen, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path):
+        self.screen = screen
         self.board = board
         self.user_input_queue = queue.Queue()
         self.start_time = time.monotonic()
-        self.piece_factory = PieceFactory(board, pieces_root)
+        self.piece_factory = PieceFactory(self.board, pieces_root)
         self.pieces: Dict[str, Piece] = {}
         self.pos_to_piece: Dict[Tuple[int, int], Piece] = {}
         self._current_board = None
@@ -33,6 +38,10 @@ class Game:
         self._lock = threading.Lock()
         self._running = True
 
+        EventBus.subscribe('move', Log.update_log)
+        EventBus.subscribe('capture', Score.update_score)
+
+
     def _load_pieces_from_csv(self, csv_path: pathlib.Path):
         with csv_path.open() as f:
             reader = csv.reader(f)
@@ -43,7 +52,7 @@ class Game:
                         continue
                     cell = (row_idx, col_idx)
                     piece = self.piece_factory.create_piece(code, cell)
-                    self.pieces[piece.get_unique()] = piece
+                    self.pieces[piece.get_id()] = piece
                     self.pos_to_piece[cell] = piece
 
     def game_time_ms(self) -> int:
@@ -155,7 +164,7 @@ class Game:
 
             self._draw()
 
-            cv2.imshow("Chess", self._current_board.img.img)
+            self.screen.show("Chess")
             cv2.waitKey(1)
 
         self._announce_win()
@@ -194,12 +203,12 @@ class Game:
                         (piece._state._current_command and
                          piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
                         opponent._state._physics.start_time > piece._state._physics.start_time)):
-                # if piece._state._physics.can_capture() and opponent._state._physics.can_be_captured()
-
+                    EventBus.publish('capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id()})
                     self.pos_to_piece[pos] = piece
-                    to_remove.add(opponent.get_unique())
+                    to_remove.add(opponent.get_id())
                 else:
-                    to_remove.add(piece.get_unique())
+                    to_remove.add(piece.get_id())
+                    EventBus.publish('capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id()})
             else:
                 self.pos_to_piece[pos] = piece
 
@@ -245,6 +254,7 @@ class Game:
             cv2.rectangle(board.img.img, (sx1, sy1), (sx2, sy2), (0, 255, 0), 2)
 
         self._current_board = board
+        self.screen.draw(self._current_board)
 
     def _is_win(self) -> bool:
         kings = [p for p in self.pieces.values() if p.get_id().lower().startswith("k")]
@@ -281,7 +291,7 @@ class Game:
             if piece:
                 cmd = Command(
                     timestamp=self.game_time_ms(),
-                    piece_id=piece.get_unique(),
+                    piece_id=piece.get_id(),
                     type="move",
                     params=[src_alg, dst_alg]
                 )
@@ -311,7 +321,7 @@ class Game:
             if piece:
                 cmd = Command(
                     timestamp=self.game_time_ms(),
-                    piece_id=piece.get_unique(),
+                    piece_id=piece.get_id(),
                     type="move",
                     params=[src_alg, dst_alg]
                 )

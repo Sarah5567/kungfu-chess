@@ -1,23 +1,22 @@
 import PhysicsFactory
 from Board import Board
 from Command import Command
+from EventBus import EventBus
 from State import State
 from typing import Optional
 import cv2
 
 class Piece:
-    nextCode = 0
     def __init__(self, piece_id: str, init_state: State):
         self._id = piece_id
-        self._uniqueNumber = Piece.nextCode
-        Piece.nextCode += 1
         self._state = init_state
         self._current_cmd: Optional[Command] = None
-        count = 0
 
 
     def on_command(self, cmd: Command, now_ms: int):
         if self.is_command_possible(cmd):
+            if cmd.type == "move":
+                EventBus.publish('move', {'player': cmd.piece_id[1], 'time': now_ms, 'source': cmd.params[0], 'destination': cmd.params[1]})
             self._current_cmd = cmd
             self._state = self._state.process_command(cmd, now_ms)
 
@@ -82,9 +81,6 @@ class Piece:
 
     def get_id(self):
         return self._id
-
-    def get_unique(self):
-        return self._uniqueNumber
 
     def get_command(self):
         return self._state.get_command()
