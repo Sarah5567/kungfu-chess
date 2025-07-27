@@ -19,6 +19,8 @@ class Piece:
             if cmd.type == "move":
                 self.publish_move('black_move' if self._id[1] == 'B' else 'white_move', cmd, now_ms)
                 self._current_cmd = cmd
+            if cmd.type == 'jump':
+                event_bus.publish('jump', {'sound': 'jump.wav'})
             self._state = self._state.process_command(cmd, now_ms)
 
     def publish_move(self, event_name : str, cmd : Command, now_ms : int):
