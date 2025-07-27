@@ -154,6 +154,7 @@ class ShortRestPhysics(Physics):
         if self.start_time is None:
             self.start_time = now_ms
         if now_ms - self.start_time >= self.rest_duration:
+            self.finished = True
             return Command(
                 timestamp=now_ms,
                 piece_id=self.cmd.piece_id,
