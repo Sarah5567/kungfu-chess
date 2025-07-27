@@ -1,3 +1,4 @@
+from numba.cuda.cudadrv.nvvm import cas_nvvm
 
 import PhysicsFactory
 from Board import Board
@@ -15,8 +16,8 @@ class Piece:
         self._current_cmd: Optional[Command] = None
 
 
-    def on_command(self, cmd: Command, now_ms: int):
-        if self.is_command_possible(cmd):
+    def on_command(self, cmd: Command, now_ms: int, dst_empty : bool = True):
+        if self.is_command_possible(cmd, dst_empty):
             if cmd.type == "move":
                 self.publish_move('black_move' if self._id[1] == 'B' else 'white_move', cmd, now_ms)
                 self._current_cmd = cmd
@@ -28,13 +29,41 @@ class Piece:
         destination_cell : str = cmd.params[1]
         event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
 
-    def is_command_possible(self, cmd: Command) -> bool:
-        if cmd.type == "move":
-            src = self._state._physics.start_cell
-            dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
-            legal = self._state._moves.get_moves(*src)
-            if dst not in legal:
-                return False
+    def is_command_possible(self, cmd: Command, dst_empty: bool) -> bool:
+        if cmd.type != "move":
+            return cmd is not None and cmd.type in self._state.transitions
+
+        src = self._state._physics.start_cell
+        dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
+        legal = self._state._moves.get_moves(*src)
+
+        # חייל (Pawn)
+        if self._id[0] == 'P':
+            src_y, src_x = src
+            dst_y, dst_x = dst
+
+            direction = -1 if self._id[1] == 'W' else 1  # לבנים עולים, שחורים יורדים
+
+            # תנועה קדימה צעד אחד
+            if dst_x == src_x and dst_y == src_y + direction and dst_empty:
+                return True
+
+            # תנועה קדימה שני צעדים (אם בעמדת פתיחה)
+            start_row = 6 if self._id[1] == 'W' else 1
+            if (src_y == start_row and
+                    dst_x == src_x and
+                    dst_y == src_y + 2 * direction and
+                    dst_empty):
+                return True
+
+            # אכילה באלכסון
+            if abs(dst_x - src_x) == 1 and dst_y == src_y + direction and not dst_empty:
+                return True
+
+            return False  # כל השאר לא חוקי
+
+        # כלים אחרים – משתמשים בלוגיקה הרגילה
+        return dst in legal
 
         return cmd is not None and cmd.type in self._state.transitions
 

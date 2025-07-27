@@ -152,11 +152,14 @@ class Game:
                     continue
                 moving_piece = self.pos_to_piece[src_cell]
 
+                dst_empty : bool = True
                 if dst_cell in self.pos_to_piece:
                     target_piece = self.pos_to_piece[dst_cell]
                     if target_piece.get_id()[1] == moving_piece.get_id()[1]:
                         print("Move blocked: Destination occupied by friendly piece.")
                         continue
+                    else:
+                        dst_empty = False
 
                 path_clear = True
                 dx = dst_cell[1] - src_cell[1]
@@ -181,7 +184,7 @@ class Game:
                     print("Move blocked: Path is obstructed.")
                     continue
 
-                self.pos_to_piece[src_cell].on_command(cmd, now)
+                self.pos_to_piece[src_cell].on_command(cmd, now, dst_empty)
 
             self._draw()
 
@@ -208,6 +211,7 @@ class Game:
     def _update_position_mapping(self):
         self.pos_to_piece.clear()
         to_remove = set()
+        to_promote = []  # נאסוף כאן את החיילים שצריכים להפוך למלכה
 
         for piece in list(self.pieces.values()):  # שימוש ב-list כדי להקפיא את הערכים בזמן הלולאה
             x, y = map(int, piece._state._physics.get_pos())
@@ -220,22 +224,39 @@ class Game:
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
                 if (not opponent._state._current_command or
-                    opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
+                        opponent._state._current_command.type in ["idle", "long_rest", "short_rest"] or
                         (piece._state._current_command and
                          piece._state._current_command.type not in ["idle", "long_rest", "short_rest"] and
-                        opponent._state._physics.start_time > piece._state._physics.start_time)):
-                    event_bus.publish('black_capture' if piece.get_id()[1] == 'B' else 'white_capture', {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'})
+                         opponent._state._physics.start_time > piece._state._physics.start_time)):
+                    event_bus.publish(
+                        'black_capture' if piece.get_id()[1] == 'B' else 'white_capture',
+                        {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'}
+                    )
                     self.pos_to_piece[pos] = piece
                     to_remove.add(opponent.get_id())
                 else:
                     to_remove.add(piece.get_id())
-                    event_bus.publish('black_capture' if opponent.get_id()[1] == 'B' else 'white_capture', {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(), 'sound': 'capture.wav'})
+                    event_bus.publish(
+                        'black_capture' if opponent.get_id()[1] == 'B' else 'white_capture',
+                        {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(), 'sound': 'capture.wav'}
+                    )
             else:
                 self.pos_to_piece[pos] = piece
 
-        for k in to_remove:
-            self.pieces.pop(k, None)  # pop עם None כדי למנוע שגיאת KeyError
+            # במקום לבצע כאן את ההמרה, נשמור אותה לטיפול אחרי הלולאה
+            if piece.get_id()[0] == 'P' and (pos[0] == 0 or pos[0] == 7):
+                to_promote.append((piece.get_id(), pos))
 
+        # מחיקת כלים שאכלו אותם
+        for k in to_remove:
+            self.pieces.pop(k, None)
+
+        # טיפול בהפיכה למלכה לאחר שכל האכילות הושלמו
+        for pawn_id, pos in to_promote:
+            if pawn_id in self.pieces:
+                new_queen = self.piece_factory.create_piece('Q' + self.pieces[pawn_id].get_id()[1], pos)
+                self.pieces[pawn_id] = new_queen
+                self.pos_to_piece[pos] = new_queen
 
     def _draw(self):
         board = self.clone_board()
