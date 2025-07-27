@@ -131,6 +131,7 @@ class JumpPhysics(Physics):
         if self.start_time is None:
             self.start_time = now_ms
         if now_ms - self.start_time >= self.jump_duration:
+            self.finished = True
             return self.cmd
         return None
 
@@ -153,7 +154,12 @@ class ShortRestPhysics(Physics):
         if self.start_time is None:
             self.start_time = now_ms
         if now_ms - self.start_time >= self.rest_duration:
-            return self.cmd
+            return Command(
+                timestamp=now_ms,
+                piece_id=self.cmd.piece_id,
+                type="idle",
+                params=[self.start_cell, self.start_cell]
+            )
         return None
 
     def can_be_captured(self) -> bool:

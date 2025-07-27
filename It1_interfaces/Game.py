@@ -155,7 +155,7 @@ class Game:
                 dst_empty : bool = True
                 if dst_cell in self.pos_to_piece:
                     target_piece = self.pos_to_piece[dst_cell]
-                    if target_piece.get_id()[1] == moving_piece.get_id()[1]:
+                    if target_piece.get_id()[1] == moving_piece.get_id()[1] and target_piece.get_id() != moving_piece.get_id():
                         print("Move blocked: Destination occupied by friendly piece.")
                         continue
                     else:
@@ -333,12 +333,20 @@ class Game:
             print(f"User 1 destination selected at {dst_cell} -> {dst_alg}")
             piece = self.pos_to_piece.get(src_cell)
             if piece:
-                cmd = Command(
-                    timestamp=self.game_time_ms(),
-                    piece_id=piece.get_id(),
-                    type="move",
-                    params=[src_alg, dst_alg]
-                )
+                if src_cell == dst_cell:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="jump",
+                        params=[src_alg, dst_alg]
+                    )
+                else:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="move",
+                        params=[src_alg, dst_alg]
+                    )
                 self.user_input_queue.put(cmd)
             self._reset_selection()
 
@@ -363,12 +371,20 @@ class Game:
             print(f"User 2 destination selected at {dst_cell} -> {dst_alg}")
             piece = self.pos_to_piece.get(src_cell)
             if piece:
-                cmd = Command(
-                    timestamp=self.game_time_ms(),
-                    piece_id=piece.get_id(),
-                    type="move",
-                    params=[src_alg, dst_alg]
-                )
+                if src_cell == dst_cell:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="jump",
+                        params=[src_alg, dst_alg]
+                    )
+                else:
+                    cmd = Command(
+                        timestamp=self.game_time_ms(),
+                        piece_id=piece.get_id(),
+                        type="move",
+                        params=[src_alg, dst_alg]
+                    )
                 self.user_input_queue.put(cmd)
             self._reset_selection2()
 
