@@ -467,7 +467,8 @@ class Screen:
             self._img[board_offset_y:board_offset_y + bh, board_offset_x:board_offset_x + bw] = board_img
 
         # Modern colors
-        text_red = (0, 0, 255)       # Pure red for text
+        player_name_color = (0, 0, 0)  # Black
+        score_color = (0, 0, 255)  # Red
         line_color = (50, 50, 50)    # Subtle dark gray for lines
         border_color = (100, 100, 100)  # Light gray for borders
 
@@ -501,7 +502,7 @@ class Screen:
 
                 # Draw player name
                 cv2.putText(self._img, title, (title_x, title_y),
-                            font, title_scale, text_red, title_thickness, cv2.LINE_AA)
+                            font, title_scale, player_name_color, title_thickness, cv2.LINE_AA)
 
                 # Minimal underline
                 cv2.line(self._img,
@@ -519,7 +520,7 @@ class Screen:
 
                 # Draw score
                 cv2.putText(self._img, score_text, (score_x, score_y),
-                            font, score_scale, text_red, score_thickness, cv2.LINE_AA)
+                            font, score_scale, score_color, score_thickness, cv2.LINE_AA)
 
         # --- Right Table (White Player) ---
         if self.right_table is not None:
@@ -548,7 +549,7 @@ class Screen:
 
                 # Draw player name
                 cv2.putText(self._img, title, (title_x, title_y),
-                            font, title_scale, text_red, title_thickness, cv2.LINE_AA)
+                            font, title_scale, player_name_color, title_thickness, cv2.LINE_AA)
 
                 # Minimal underline
                 cv2.line(self._img,
@@ -565,12 +566,12 @@ class Screen:
                 # Check if there's space below
                 if score_y + 25 < self._screen_h:
                     cv2.putText(self._img, score_text, (score_x, score_y),
-                                font, score_scale, text_red, score_thickness, cv2.LINE_AA)
+                                font, score_scale, score_color, score_thickness, cv2.LINE_AA)
                 else:
                     # If no space below, put above
                     score_y_alt = ry - 25
                     cv2.putText(self._img, score_text, (score_x, score_y_alt),
-                                font, score_scale, text_red, score_thickness, cv2.LINE_AA)
+                                font, score_scale, score_color, score_thickness, cv2.LINE_AA)
 
     def show(self, win_name="Screen"):
         cv2.imshow(win_name, self._img)

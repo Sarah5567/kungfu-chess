@@ -2,10 +2,13 @@ import PhysicsFactory
 from Board import Board
 from Command import Command
 from EventBus import event_bus
-from Log import Log
+from enums.EventsNames import EventsNames
 from State import State
 from typing import Optional
 import cv2
+
+from enums.StatesNames import StatesNames
+
 
 class Piece:
     def __init__(self, piece_id: str, init_state: State):
@@ -16,21 +19,21 @@ class Piece:
 
     def on_command(self, cmd: Command, now_ms: int, dst_empty : bool = True):
         if self.is_command_possible(cmd, dst_empty) and self._state.is_command_possible(cmd):
-            if cmd.type == "move":
-                self.publish_move('black_move' if self._id[1] == 'B' else 'white_move', cmd, now_ms)
+            if cmd.type == StatesNames.MOVE:
+                self.publish_move(EventsNames.BLACK_MOVE if self._id[1] == 'B' else EventsNames.WHITE_MOVE, cmd, now_ms)
                 self._current_cmd = cmd
-            if cmd.type == 'jump':
-                event_bus.publish('jump', {'sound': 'jump.wav'})
+            if cmd.type == StatesNames.JUMP:
+                event_bus.publish(EventsNames('jump'), {'sound': 'jump.wav'})
             self._state = self._state.process_command(cmd)
 
-    def publish_move(self, event_name : str, cmd : Command, now_ms : int):
+    def publish_move(self, event_name : EventsNames, cmd : Command, now_ms : int):
         player : str = cmd.piece_id[1]
         source_cell : str = cmd.params[0]
         destination_cell : str = cmd.params[1]
         event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
 
     def is_command_possible(self, cmd: Command, dst_empty: bool) -> bool:
-        if cmd.type != "move":
+        if cmd.type != StatesNames.MOVE:
             return cmd is not None and cmd.type in self._state.transitions
 
         src = self._state._physics.start_cell

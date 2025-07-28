@@ -8,6 +8,7 @@ import threading
 import keyboard
 from Board import Board
 from Command import Command
+from enums.EventsNames import EventsNames
 from Log import Log
 from Piece import Piece
 from Score import Score
@@ -47,16 +48,21 @@ class Game:
         self.subscriptions(sounds_root)
 
     def subscriptions(self, sounds_root):
-        event_bus.subscribe('black_move', self.black_log.update_log)
-        event_bus.subscribe('white_move', self.white_log.update_log)
-        event_bus.subscribe('black_capture', self.black_score.update_score)
-        event_bus.subscribe('white_capture', self.white_score.update_score)
-        event_bus.subscribe('black_move', self.play_sounds)
-        event_bus.subscribe('white_move', self.play_sounds)
-        event_bus.subscribe('black_capture', self.play_sounds)
-        event_bus.subscribe('white_capture', self.play_sounds)
-        event_bus.subscribe('jump', self.play_sounds)
-        event_bus.subscribe('victory', self.play_sounds)
+        event_bus.subscribe(EventsNames.BLACK_MOVE, self.black_log.update_log)
+        event_bus.subscribe(EventsNames.WHITE_MOVE, self.white_log.update_log)
+
+        event_bus.subscribe(EventsNames.BLACK_CAPTURE, self.black_score.update_score)
+        event_bus.subscribe(EventsNames.WHITE_CAPTURE, self.white_score.update_score)
+
+        for event in [
+            EventsNames.BLACK_MOVE,
+            EventsNames.WHITE_MOVE,
+            EventsNames.BLACK_CAPTURE,
+            EventsNames.WHITE_CAPTURE,
+            EventsNames.JUMP,
+            EventsNames.VICTORY,
+        ]:
+            event_bus.subscribe(event, self.play_sounds)
 
     def play_sounds(self, event : Event):
         def _play():
@@ -236,7 +242,7 @@ class Game:
                     continue
                 if self.should_capture(opponent, piece):
                     event_bus.publish(
-                        'black_capture' if piece.get_id()[1] == 'B' else 'white_capture',
+                        EventsNames.BLACK_CAPTURE if piece.get_id()[1] == 'B' else EventsNames.WHITE_MOVE,
                         {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'}
                     )
                     self.pos_to_piece[pos] = piece
@@ -244,7 +250,7 @@ class Game:
                 else:
                     to_remove.add(piece.get_id())
                     event_bus.publish(
-                        'black_capture' if opponent.get_id()[1] == 'B' else 'white_capture',
+                        EventsNames.BLACK_CAPTURE if opponent.get_id()[1] == 'B' else EventsNames.WHITE_CAPTURE,
                         {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(), 'sound': 'capture.wav'}
                     )
             else:
@@ -312,7 +318,7 @@ class Game:
         return len(kings) <= 1
 
     def _announce_win(self):
-        event_bus.publish('victory', {'sound': 'victory.WAV'})
+        event_bus.publish(EventsNames.VICTORY, {'sound': 'victory.WAV'})
         king = next(p for p in self.pieces.values() if p.get_id().lower().startswith("k"))
         winner_name = 'black' if king.get_id()[1] == 'B' else 'white'
         self.screen.announce_win(winner_name)
