@@ -4,16 +4,18 @@ from Graphics import Graphics
 from Physics import Physics
 from typing import Dict, Optional
 
+from enums.StatesNames import StatesNames
+
 
 class State:
     def __init__(self, moves: Moves, graphics: Graphics, physics: Physics):
         self._moves = moves
         self._graphics = graphics
         self._physics = physics
-        self.transitions: Dict[str, "State"] = {}
+        self.transitions: Dict[StatesNames, "State"] = {}
         self._current_command: Optional[Command] = None
 
-    def set_transition(self, event: str, target: "State"):
+    def set_transition(self, event: StatesNames, target: "State"):
         self.transitions[event] = target
 
     def reset(self, cmd: Command):
@@ -38,4 +40,3 @@ class State:
 
     def get_command(self) -> Optional[Command]:
         return self._current_command
-

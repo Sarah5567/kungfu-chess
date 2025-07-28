@@ -41,13 +41,13 @@ class PieceFactory:
                 (self.board.cell_H_pix, self.board.cell_W_pix)
             )
             states[state_name] = State(moves, graphics, physics)
-        states[StatesNames("idle")].set_transition("move", states[StatesNames("move")])
-        states[StatesNames("idle")].set_transition("jump", states[StatesNames("jump")])
-        states[StatesNames("move")].set_transition("long_rest", states[StatesNames("long_rest")])
-        states[StatesNames("jump")].set_transition("short_rest", states[StatesNames("short_rest")])
-        states[StatesNames("long_rest")].set_transition("idle", states[StatesNames("idle")])
-        states[StatesNames("short_rest")].set_transition("idle", states[StatesNames("idle")])
-        return states[StatesNames("idle")]
+        states[StatesNames.IDLE].set_transition(StatesNames.MOVE, states[StatesNames.MOVE])
+        states[StatesNames.IDLE].set_transition(StatesNames.JUMP, states[StatesNames.JUMP])
+        states[StatesNames.MOVE].set_transition(StatesNames.LONG_REST, states[StatesNames.LONG_REST])
+        states[StatesNames.JUMP].set_transition(StatesNames.SHORT_REST, states[StatesNames.SHORT_REST])
+        states[StatesNames.LONG_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
+        states[StatesNames.SHORT_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
+        return states[StatesNames.IDLE]
 
     def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
         if p_type not in self._templates:

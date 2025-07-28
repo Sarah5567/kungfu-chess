@@ -17,6 +17,9 @@ from EventBus import event_bus, Event
 from PieceFactory import PieceFactory
 from playsound import playsound
 
+from enums.StatesNames import StatesNames
+
+
 class Game:
     def __init__(self, screen: Screen, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path, sounds_root: pathlib.Path):
         self.screen = screen
@@ -238,7 +241,7 @@ class Game:
 
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
-                if piece._state._current_command and piece._state._current_command.type == 'jump':
+                if piece._state._current_command and piece._state._current_command.type == StatesNames.JUMP:
                     continue
                 if self.should_capture(opponent, piece):
                     event_bus.publish(
@@ -272,9 +275,11 @@ class Game:
                 self.pos_to_piece[pos] = new_queen
 
     def should_capture(self, opponent, piece):
-        if not opponent._state._current_command or  opponent._state._current_command.type in ["idle", "long_rest", "short_rest"]:
+        if not opponent._state._current_command or opponent._state._current_command.type in [
+            StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
             return True
-        if piece._state._current_command and piece._state._current_command.type not in ["idle", "long_rest", "short_rest"]:
+        if piece._state._current_command and piece._state._current_command.type not in  [
+            StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
             return opponent._state._physics.start_time > piece._state._physics.start_time
         return False
 
@@ -365,7 +370,7 @@ class Game:
             print(f"User {user_id} destination selected at {dst_cell} -> {dst_alg}")
             piece = self.pos_to_piece.get(src_cell)
             if piece:
-                move_type = "jump" if src_cell == dst_cell else "move"
+                move_type = StatesNames.JUMP if src_cell == dst_cell else StatesNames.MOVE
                 cmd = Command(
                     timestamp=self.game_time_ms(),
                     piece_id=piece.get_id(),
