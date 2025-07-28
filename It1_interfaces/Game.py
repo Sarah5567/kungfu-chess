@@ -245,7 +245,7 @@ class Game:
                     continue
                 if self.should_capture(opponent, piece):
                     event_bus.publish(
-                        EventsNames.BLACK_CAPTURE if piece.get_id()[1] == 'B' else EventsNames.WHITE_MOVE,
+                        EventsNames.BLACK_CAPTURE if piece.get_id()[1] == 'B' else EventsNames.WHITE_CAPTURE,
                         {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'}
                     )
                     self.pos_to_piece[pos] = piece
@@ -271,7 +271,7 @@ class Game:
         for pawn_id, pos in to_promote:
             if pawn_id in self.pieces:
                 new_queen = self.piece_factory.create_piece('Q' + self.pieces[pawn_id].get_id()[1], pos)
-                self.pieces[pawn_id] = new_queen
+                self.pieces[new_queen.get_id()] = new_queen
                 self.pos_to_piece[pos] = new_queen
 
     def should_capture(self, opponent, piece):
