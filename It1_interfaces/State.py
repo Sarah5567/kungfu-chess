@@ -25,12 +25,13 @@ class State:
         self._graphics.update(now_ms)
         self._physics.update(now_ms)
 
-    def process_command(self, cmd: Command, now_ms: int) -> "State":
+    def process_command(self, cmd: Command) -> "State":
         next_state = self.transitions.get(cmd.type)
-        if next_state is None:
-            return self  # stay in current state
         next_state.reset(cmd)
         return next_state
+
+    def is_command_possible(self, cmd: Command):
+        return cmd.type in self.transitions
 
     def can_transition(self, now_ms: int) -> bool:
         return self._physics.update(now_ms) is not None

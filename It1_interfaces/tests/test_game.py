@@ -1,79 +1,129 @@
-import time
-import unittest
+from pathlib import Path
+import pytest
 from unittest.mock import MagicMock, patch
-import pathlib
-from Game import Game
 from Board import Board
+from Game import Game
 from Screen import Screen
-from PieceFactory import PieceFactory
-from Command import Command
-from Piece import Piece
+from Img import Img
 
-class TestGame(unittest.TestCase):
-    def setUp(self):
-        self.screen = MagicMock(spec=Screen)
-        self.board = MagicMock(spec=Board)
-        self.board.H_cells = 8
-        self.board.W_cells = 8
-        self.board.cell_W_pix = 100
-        self.board.cell_H_pix = 100
-        self.board.is_valid_cell.return_value = True
-        self.board.clone.return_value = self.board
-        self.board.algebraic_to_cell = lambda a: (0, 0) if a == 'a1' else (1, 1)
-        self.board.cell_to_algebraic = lambda cell: 'a1' if cell == (0, 0) else 'b2'
+@pytest.fixture
+def mock_screen():
+    screen = MagicMock(spec=Screen)
+    screen.draw = MagicMock()
+    screen.show = MagicMock()
+    screen.reset = MagicMock()
+    screen.update_left = MagicMock()
+    screen.update_right = MagicMock()
+    screen.announce_win = MagicMock()
+    return screen
 
-        self.pieces_root = pathlib.Path('.')
-        self.placement_csv = pathlib.Path('../../board.csv')
-        self.sounds_root = pathlib.Path('.')
+@pytest.fixture
+def mock_board():
+    board = MagicMock(spec=Board)
+    board.img = MagicMock(spec=Img)
+    board.H_cells = 8
+    board.W_cells = 8
+    board.cell_H_pix = 100
+    board.cell_W_pix = 100
+    board.clone.return_value = board
+    board.algebraic_to_cell = MagicMock(return_value=(0,0))
+    board.cell_to_algebraic = MagicMock(return_value="a1")
+    board.is_valid_cell = MagicMock(return_value=True)
+    return board
 
-        # mock PieceFactory
-        patcher2 = patch('Game.PieceFactory')
-        self.MockPieceFactory = patcher2.start()
-        self.addCleanup(patcher2.stop)
-        self.factory_instance = self.MockPieceFactory.return_value
-        self.mock_piece = MagicMock(spec=Piece)
-        self.mock_piece.get_id.return_value = 'PB1'
-        self.factory_instance.create_piece.return_value = self.mock_piece
+@pytest.fixture
+def game(mock_screen, mock_board):
+    base_path = Path(__file__).resolve().parent.parent
+    pieces_root = base_path.parent / "PIECES"
+    placement_csv = base_path / "board.csv"
+    sounds_root = base_path.parent / "sounds"
 
-        self.game = Game(self.screen, self.board, self.pieces_root, self.placement_csv, self.sounds_root)
+    with patch('Game.PieceFactory'), \
+         patch('Game.playsound'), \
+         patch('Game.cv2'), \
+         patch('Game.keyboard'):
+        game = Game(mock_screen, mock_board, pieces_root, placement_csv, sounds_root)
+        return game
 
-    def test_game_initialization_loads_pieces(self):
-        self.assertIn('PB1', self.game.pieces)
-        self.assertEqual(self.game.pos_to_piece[(0, 0)], self.mock_piece)
+def test_game_init(game, mock_screen, mock_board):
+    assert game.screen == mock_screen
+    assert game.board == mock_board
+    assert game._running == True
+    assert game._selection_mode == "source"
+    assert game._selection_mode2 == "source"
 
-    def test_game_time_ms_returns_positive_int(self):
-        ms = self.game.game_time_ms()
-        self.assertIsInstance(ms, int)
-        self.assertGreaterEqual(ms, 0)
+def test_game_reset_selection(game):
+    game._selected_source = (0,0)
+    game._selection_mode = "dest"
+    game._reset_selection()
+    assert game._selection_mode == "source"
+    assert game._selected_source == None
 
-    def test_add_command_and_process_move(self):
-        self.game.user_input_queue.put(Command(
-            timestamp=123,
-            piece_id='PB1',
-            type='move',
-            params=['a1', 'b2']
-        ))
-        self.game.pos_to_piece[(0, 0)] = self.mock_piece
-        self.mock_piece.get_id.return_value = 'PB1'
-        self.mock_piece._state._current_command = None
-        self.mock_piece.on_command = MagicMock()
+@patch('Game.cv2')
+def test_game_announce_win(mock_cv2, game, mock_screen):
+    # Mock a king piece
+    king_piece = MagicMock()
+    king_piece.get_id.return_value = "KB"
+    game.pieces = {"KB": king_piece}
 
-        self.game._update_position_mapping = MagicMock()
-        self.game._draw = MagicMock()
-        self.game._is_win = MagicMock(side_effect=[False, True])
+    game._announce_win()
+    mock_screen.announce_win.assert_called_once_with("black")
 
-        self.game.run()
+def test_game_is_win_true(game):
+    # Only one king left
+    king_piece = MagicMock()
+    king_piece.get_id.return_value = "KB"
+    game.pieces = {"KB": king_piece}
 
-        self.mock_piece.on_command.assert_called()
+    assert game._is_win() == True
 
-    def test_keyboard_input_triggers_enter(self):
-        with patch('keyboard.is_pressed') as mock_key:
-            mock_key.side_effect = lambda k: k == 'enter'
-            self.game._on_enter_pressed = MagicMock()
-            self.game._running = False
-            self.game.start_keyboard_thread()
-            time.sleep(0.1)
-            self.game._on_enter_pressed.assert_called()
+def test_game_is_win_false(game):
+    # Both kings present
+    king1 = MagicMock()
+    king2 = MagicMock()
+    king1.get_id.return_value = "KB"
+    king2.get_id.return_value = "KW"
+    game.pieces = {"KB": king1, "KW": king2}
 
-if __name__ == '__main__':
-    unittest.main()
+    assert game._is_win() == False
+
+def test_game_cell_to_rect(game):
+    cell = (1, 2)
+    expected = (200, 100, 300, 200) # Based on 100px cell size
+    assert game._cell_to_rect(cell) == expected
+
+def test_handle_selection_invalid_piece(game):
+    # Setup piece that doesn't belong to player
+    piece = MagicMock()
+    piece.get_id.return_value = "PW"  # White piece
+    game.pos_to_piece = {(0,0): piece}
+
+    # Try to select with black player (user 1)
+    new_mode, new_source = game._handle_selection(
+        user_id=1,
+        selection_mode="source",
+        selected_source=None,
+        focus_cell=(0,0),
+        reset_func=game._reset_selection
+    )
+
+    assert new_mode == "source"
+    assert new_source == None
+
+def test_handle_selection_valid_move(game):
+    # Setup valid piece
+    piece = MagicMock()
+    piece.get_id.return_value = "PB"  # Black piece
+    game.pos_to_piece = {(0,0): piece}
+
+    # Select source
+    new_mode, new_source = game._handle_selection(
+        user_id=1,
+        selection_mode="source",
+        selected_source=None,
+        focus_cell=(0,0),
+        reset_func=game._reset_selection
+    )
+
+    assert new_mode == "dest"
+    assert new_source == (0,0)

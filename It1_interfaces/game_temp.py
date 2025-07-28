@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple, Optional
 from Board   import Board
 from Command import Command
 from Piece   import Piece
-from img     import Img
+from Img     import Img
 
 
 class InvalidBoard(Exception): ...

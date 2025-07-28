@@ -1,6 +1,6 @@
 from pathlib import Path
 from Board import Board
-from img import Img
+from Img import Img
 from Screen import Screen
 
 if __name__ == "__main__":
@@ -19,7 +19,7 @@ if __name__ == "__main__":
         img=Img().read("../board.png", size=(640, 640))
     )
 
-    screen = Screen(['time', 'source', 'destination'],screen_size=(1000, 1500), bg_color=(200, 200, 200))
+    screen = Screen(['time', 'source', 'destination'], screen_size=(780, 1600), bg_color=(255, 255, 255))
 
     from Game import Game
     game = Game(screen, board, pieces_root, placement_csv, sounds_root)

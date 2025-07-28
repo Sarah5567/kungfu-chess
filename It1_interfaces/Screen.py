@@ -8,7 +8,7 @@ class Screen:
     def __init__(self,
                  headers: List[str],
                  screen_size: Tuple[int, int] = (800, 800),
-                 bg_color=(50, 50, 50),
+                 bg_color=(0, 0, 0),
                  max_rows=15):
         self._screen_h, self._screen_w = screen_size
         self._bg_color = bg_color
@@ -18,7 +18,7 @@ class Screen:
         self.left_table = Table(headers)
         self.right_table = Table(headers)
 
-    def reset(self, display_duration: float = 3.0, win_name: str = "Screen"):
+    def reset(self):
 
         reset_img = np.zeros((self._screen_h, self._screen_w, 3), dtype=np.uint8)
 
@@ -450,7 +450,7 @@ class Screen:
              spacing=20,
              white_score: int = 0,
              black_score: int = 0):
-        """Draws the board, tables, and scores"""
+        """Draws the board, tables, and scores with clean modern red styling"""
         self._img[:, :] = self._bg_color
 
         # Draw the board
@@ -462,9 +462,14 @@ class Screen:
             if board_img.shape[2] == 4:
                 board_img = cv2.cvtColor(board_img, cv2.COLOR_BGRA2BGR)
             bh, bw = board_img.shape[:2]
-            board_offset_y = (self._screen_h - bh) // 2 - 50
+            board_offset_y = (self._screen_h - bh) // 2
             board_offset_x = (self._screen_w - bw) // 2
             self._img[board_offset_y:board_offset_y + bh, board_offset_x:board_offset_x + bw] = board_img
+
+        # Modern colors
+        text_red = (0, 0, 255)       # Pure red for text
+        line_color = (50, 50, 50)    # Subtle dark gray for lines
+        border_color = (100, 100, 100)  # Light gray for borders
 
         # --- Left Table (Black Player) ---
         if self.left_table is not None:
@@ -472,26 +477,49 @@ class Screen:
             lh, lw = l_img.shape[:2]
             ly = board_offset_y + (bh - lh) // 2 - 10
             lx = board_offset_x - lw - spacing
+
             if lx >= 0:
+                # Table border
+                table_padding = 8
+                cv2.rectangle(self._img,
+                              (lx - table_padding, ly - table_padding),
+                              (lx + lw + table_padding, ly + lh + table_padding),
+                              border_color, 1,
+                              lineType=cv2.LINE_AA)
+
+                # Table itself
                 self._img[ly:ly + lh, lx:lx + lw] = l_img
 
+                # Player name
                 title = "Black Player"
-                score_text = f"Score: {black_score}"
-
-                title_size = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
-                score_size = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
-
-                # Draw title
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                title_scale = 0.9
+                title_thickness = 2
+                title_size = cv2.getTextSize(title, font, title_scale, title_thickness)[0]
                 title_x = lx + (lw - title_size[0]) // 2
-                title_y = max(5, ly - 50)
+                title_y = max(35, ly - 15)
+
+                # Draw player name
                 cv2.putText(self._img, title, (title_x, title_y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+                            font, title_scale, text_red, title_thickness, cv2.LINE_AA)
+
+                # Minimal underline
+                cv2.line(self._img,
+                         (title_x, title_y + 5),
+                         (title_x + title_size[0], title_y + 5),
+                         line_color, 1, cv2.LINE_AA)
+
+                # Score with clean design
+                score_text = f"Score: {black_score}"
+                score_scale = 0.8
+                score_thickness = 2
+                score_size = cv2.getTextSize(score_text, font, score_scale, score_thickness)[0]
+                score_x = lx + (lw - score_size[0]) // 2
+                score_y = ly + lh + 30
 
                 # Draw score
-                score_x = lx + (lw - score_size[0]) // 2
-                score_y = ly + lh + score_size[1] - 675
                 cv2.putText(self._img, score_text, (score_x, score_y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+                            font, score_scale, text_red, score_thickness, cv2.LINE_AA)
 
         # --- Right Table (White Player) ---
         if self.right_table is not None:
@@ -499,28 +527,50 @@ class Screen:
             rh, rw = r_img.shape[:2]
             ry = board_offset_y + (bh - rh) // 2 - 10
             rx = board_offset_x + bw + spacing
+
             if rx + rw <= self._screen_w:
+                # Table border
+                table_padding = 8
+                cv2.rectangle(self._img,
+                              (rx - table_padding, ry - table_padding),
+                              (rx + rw + table_padding, ry + rh + table_padding),
+                              border_color, 1,
+                              lineType=cv2.LINE_AA)
+
+                # Table itself
                 self._img[ry:ry + rh, rx:rx + rw] = r_img
 
+                # Player name
                 title = "White Player"
-                score_text = f"Score: {white_score}"
-
-                title_size = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
-                score_size = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
-
+                title_size = cv2.getTextSize(title, font, title_scale, title_thickness)[0]
                 title_x = rx + (rw - title_size[0]) // 2
-                title_y = max(5, ry - 50)
-                cv2.putText(self._img, title, (title_x, title_y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+                title_y = max(35, ry - 15)
 
+                # Draw player name
+                cv2.putText(self._img, title, (title_x, title_y),
+                            font, title_scale, text_red, title_thickness, cv2.LINE_AA)
+
+                # Minimal underline
+                cv2.line(self._img,
+                         (title_x, title_y + 5),
+                         (title_x + title_size[0], title_y + 5),
+                         line_color, 1, cv2.LINE_AA)
+
+                # Score with clean design
+                score_text = f"Score: {white_score}"
+                score_size = cv2.getTextSize(score_text, font, score_scale, score_thickness)[0]
                 score_x = rx + (rw - score_size[0]) // 2
-                score_y = ry + rh + score_size[1] - 675
-                if score_y + 5 < self._screen_h:
+                score_y = ry + rh + 30
+
+                # Check if there's space below
+                if score_y + 25 < self._screen_h:
                     cv2.putText(self._img, score_text, (score_x, score_y),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+                                font, score_scale, text_red, score_thickness, cv2.LINE_AA)
                 else:
-                    cv2.putText(self._img, score_text, (score_x, ry - 40),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+                    # If no space below, put above
+                    score_y_alt = ry - 25
+                    cv2.putText(self._img, score_text, (score_x, score_y_alt),
+                                font, score_scale, text_red, score_thickness, cv2.LINE_AA)
 
     def show(self, win_name="Screen"):
         cv2.imshow(win_name, self._img)

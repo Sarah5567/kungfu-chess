@@ -33,20 +33,18 @@ class Table:
         img = np.full((total_rows * self.cell_h, cols * self.cell_w, 3),
                       self.bg_color, dtype=np.uint8)
 
-        # Draw headers
+        # Draw headers (without rectangle)
         for j, text in enumerate(self.headers):
             x = j * self.cell_w
             y = 0
-            cv2.rectangle(img, (x, y), (x + self.cell_w, self.cell_h), (0, 0, 0), 1)
             cv2.putText(img, str(text), (x + 5, y + int(self.cell_h * 0.7)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.text_color, 1)
 
-        # Draw rows
+        # Draw rows (without rectangle)
         for i in range(self.max_rows):
             for j in range(len(self.headers)):
                 x = j * self.cell_w
                 y = (i + 1) * self.cell_h
-                cv2.rectangle(img, (x, y), (x + self.cell_w, y + self.cell_h), (0, 0, 0), 1)
                 text = self.rows[i][j] if i < len(self.rows) and j < len(self.rows[i]) else ""
                 cv2.putText(img, str(text), (x + 5, y + int(self.cell_h * 0.7)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.text_color, 1)

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import copy
 from typing import Tuple
 
-from img import Img
+from Img import Img
 
 @dataclass
 class Board:

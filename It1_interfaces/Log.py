@@ -7,16 +7,19 @@ class Log:
 
     def update_log(self, event: Event):
         event_time = event.data.get('time')
-        if isinstance(event_time, str):
-            try:
-                event_time = datetime.fromisoformat(event_time)
-            except ValueError:
-                print("Invalid time format in event data. Using current time.")
-                event_time = datetime.now()
+        if isinstance(event_time, (int, float)):
+            # Convert milliseconds to HH:MM:SS format
+            seconds = event_time / 1000  # Convert ms to seconds
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            seconds = int(seconds % 60)
+            time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         else:
-            event_time = datetime.now()
+            print("Invalid time format in event data")
+            time_str = "00:00:00"
+
         activity = {
-            'time': event_time.strftime('%H:%M:%S'),  # Format as HH:MM:SS
+            'time': time_str,
             'source': event.data['source'],
             'destination': event.data['destination']
         }

@@ -3,7 +3,7 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional
 import copy
-from img import Img
+from Img import Img
 from Command import Command
 from Board import Board
 
