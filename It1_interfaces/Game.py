@@ -22,7 +22,7 @@ class Game:
         self._sounds_root = sounds_root
         self.board = board
         self.user_input_queue = queue.Queue()
-        self.start_time = time.monotonic()
+        self.start_time = 0
         self.piece_factory = PieceFactory(self.board, pieces_root)
         self.pieces: Dict[str, Piece] = {}
         self.pos_to_piece: Dict[Tuple[int, int], Piece] = {}
@@ -129,7 +129,7 @@ class Game:
         threading.Thread(target=keyboard_loop, daemon=True).start()
 
     def run(self):
-
+        self.start_time = time.monotonic()
         self.screen.reset()
         self.screen.show("Chess")
         while True:
