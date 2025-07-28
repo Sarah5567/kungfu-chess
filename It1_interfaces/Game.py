@@ -56,7 +56,7 @@ class Game:
         event_bus.subscribe('black_capture', self.play_sounds)
         event_bus.subscribe('white_capture', self.play_sounds)
         event_bus.subscribe('jump', self.play_sounds)
-
+        event_bus.subscribe('victory', self.play_sounds)
 
     def play_sounds(self, event : Event):
         def _play():
@@ -134,6 +134,14 @@ class Game:
         start_ms = self.game_time_ms()
         for piece in self.pieces.values():
             piece.reset(start_ms)
+
+        self.screen.reset()
+        self.screen.show("Chess")
+
+        while True:
+            key = cv2.waitKey(0)
+            if key == 13:  # 13 הוא הקוד של מקש Enter
+                break
 
         while self._running and not self._is_win():
             now = self.game_time_ms()
@@ -308,12 +316,10 @@ class Game:
         return len(kings) <= 1
 
     def _announce_win(self):
-        if len(self.pieces) == 0:
-            print("Draw.")
-        elif len(self.pieces) == 1:
-            print(f"{list(self.pieces.values())[0].get_id()} wins!")
-        else:
-            print("Game over.")
+        event_bus.publish('victory', {'sound': 'victory.WAV'})
+        king = next(p for p in self.pieces.values() if p.get_id().lower().startswith("k"))
+        winner_name = 'black' if king.get_id()[1] == 'B' else 'white'
+        self.screen.announce_win(winner_name)
 
     def _on_enter_pressed(self):
         if self._selection_mode == "source":

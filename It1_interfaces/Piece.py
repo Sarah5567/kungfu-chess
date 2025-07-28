@@ -72,7 +72,7 @@ class Piece:
             self._state.reset(self._current_cmd)
 
     def update(self, now_ms: int):
-        self._state = self._state.update(now_ms)
+        self._state.update(now_ms)
         if self._state._physics.finished:
             next_state =  next(iter(self._state.transitions.keys()))
             new_cell = self._state._physics.get_pos_in_cell()

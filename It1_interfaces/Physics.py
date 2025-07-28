@@ -22,7 +22,7 @@ class Physics(ABC):
         self.start_time = 0  # will be set on first update
 
     @abstractmethod
-    def update(self, now_ms: int) -> Command:
+    def update(self, now_ms: int):
         pass
 
     @abstractmethod
@@ -46,8 +46,8 @@ class IdlePhysics(Physics):
         self.start_cell = tuple(cmd.params[0])
         self.pos = self.board.cell_to_world(self.start_cell)
 
-    def update(self, now_ms: int) -> Command:
-        return None
+    def update(self, now_ms: int):
+        pass
 
     def can_be_captured(self) -> bool:
         return True
@@ -88,7 +88,7 @@ class MovePhysics(Physics):
         self.total_duration_ms = self.duration_ms + self.extra_delay_ms
         self.start_time = None
 
-    def update(self, now_ms: int) -> Command:
+    def update(self, now_ms: int):
         if self.finished:
             return self.cmd
 
@@ -107,9 +107,6 @@ class MovePhysics(Physics):
             self.pos = self.end_pos
         else:
             self.finished = True
-            return self.cmd
-
-        return None
 
     def can_be_captured(self) -> bool:
         return True
@@ -129,13 +126,13 @@ class JumpPhysics(Physics):
         self.start_cell = self.board.algebraic_to_cell(cmd.params[0])
         self.end_cell = self.board.algebraic_to_cell(cmd.params[1])
         self.pos = self.board.cell_to_world(self.end_cell)
-    def update(self, now_ms: int) -> Command:
+
+    def update(self, now_ms: int):
         if self.start_time is None:
             self.start_time = now_ms
         if now_ms - self.start_time >= self.jump_duration:
             self.finished = True
-            return self.cmd
-        return None
+
     def can_be_captured(self) -> bool:
         return False
     def can_capture(self) -> bool:
@@ -148,17 +145,15 @@ class ShortRestPhysics(Physics):
         self.start_time = None
         self.start_cell = tuple(cmd.params[0])
         self.pos = self.board.cell_to_world(self.start_cell)
-    def update(self, now_ms: int) -> Command:
+        self.finished = False
+
+
+    def update(self, now_ms: int):
         if self.start_time is None:
             self.start_time = now_ms
         if now_ms - self.start_time >= self.rest_duration:
-            return Command(
-                timestamp=now_ms,
-                piece_id=self.cmd.piece_id,
-                type="idle",
-                params=[self.start_cell, self.start_cell]
-            )
-        return None
+            self.finished = True
+
     def can_be_captured(self) -> bool:
         return True
     def can_capture(self) -> bool:
@@ -171,22 +166,14 @@ class LongRestPhysics(Physics):
         self.start_time = None
         self.start_cell = tuple(cmd.params[0])
         self.pos = self.board.cell_to_world(self.start_cell)
+        self.finished = False
 
-    def update(self, now_ms: int) -> Command:
+    def update(self, now_ms: int):
         if self.start_time is None:
             self.start_time = now_ms
 
-        # if now_ms - self.start_time >= self.rest_duration:
-        #     return self.cmd
-
         if now_ms - self.start_time >= self.rest_duration:
-            return Command(
-                timestamp=now_ms,
-                piece_id=self.cmd.piece_id,
-                type="idle",
-                params=[self.start_cell, self.start_cell]
-            )
-        return None
+            self.finished = True
 
     def can_be_captured(self) -> bool:
         return True

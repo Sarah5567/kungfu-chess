@@ -21,12 +21,9 @@ class State:
         self._graphics.reset(cmd)
         self._physics.reset(cmd)
 
-    def update(self, now_ms: int) -> "State":
+    def update(self, now_ms: int):
         self._graphics.update(now_ms)
-        cmd = self._physics.update(now_ms)
-        if cmd is not None:
-            return self.process_command(cmd, now_ms)
-        return self
+        self._physics.update(now_ms)
 
     def process_command(self, cmd: Command, now_ms: int) -> "State":
         next_state = self.transitions.get(cmd.type)
