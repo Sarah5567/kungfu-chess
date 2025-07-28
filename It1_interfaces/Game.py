@@ -294,7 +294,7 @@ class Game:
         self.screen.draw(self._current_board, white_score=self.white_score.score, black_score=self.black_score.score)
 
     def _cell_to_rect(self, cell: Tuple[int, int]) -> Tuple[int, int, int, int]:
-        """מקבל תא ומחזיר את הקואורדינטות של המלבן שמקיף אותו בפיקסלים"""
+        """Receives a cell and returns the coordinates of the rectangle surrounding it in pixels"""
         y, x = cell
         x1 = x * self.board.cell_W_pix
         y1 = y * self.board.cell_H_pix
@@ -303,7 +303,7 @@ class Game:
         return x1, y1, x2, y2
 
     def _draw_rectangle_on_board(self, board, cell: Tuple[int, int], color: Tuple[int, int, int]):
-        """מצייר מלבן על תא בצבע נתון"""
+        """Draws a rectangle on a cell in the given color"""
         x1, y1, x2, y2 = self._cell_to_rect(cell)
         cv2.rectangle(board.img.img, (x1, y1), (x2, y2), color, 2)
 
@@ -379,3 +379,4 @@ class Game:
     def _reset_selection2(self):
         self._selection_mode2 = "source"
         self._selected_source2 = None
+
