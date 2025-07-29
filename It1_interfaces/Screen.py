@@ -6,21 +6,20 @@ from Img import Img
 from Table import Table  # Required that your Table class contains log_to_table_data
 
 class Screen:
-    class Screen:
-        def __init__(self,
-                     headers: List[str],
-                     screen_size: Tuple[int, int] = (800, 800),
-                     bg_color=(0, 0, 0),
-                     opening_img: Img | None = None,
-                     max_rows=15):
-            self._screen_h, self._screen_w = screen_size
-            self._bg_color = bg_color
-            self._img = np.full((self._screen_h, self._screen_w, 3), self._bg_color, dtype=np.uint8)
+    def __init__(self,
+                 headers: List[str],
+                 screen_size: Tuple[int, int] = (800, 800),
+                 bg_color=(0, 0, 0),
+                 opening_img: Img | None = None,
+                 max_rows=15):
+        self._screen_h, self._screen_w = screen_size
+        self._bg_color = bg_color
+        self._img = np.full((self._screen_h, self._screen_w, 3), self._bg_color, dtype=np.uint8)
 
-            self._opening_img = opening_img  # שמור את ה־Img
+        self._opening_img = opening_img  # שמור את ה־Img
 
-            self.left_table = Table(headers)
-            self.right_table = Table(headers)
+        self.left_table = Table(headers)
+        self.right_table = Table(headers)
 
     def reset(self):
         if self._opening_img and self._opening_img.img is not None:
