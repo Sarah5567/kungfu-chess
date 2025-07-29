@@ -2,186 +2,36 @@ from typing import Tuple, Any, List
 import cv2
 import numpy as np
 from Board import Board
+from Img import Img
 from Table import Table  # Required that your Table class contains log_to_table_data
 
 class Screen:
-    def __init__(self,
-                 headers: List[str],
-                 screen_size: Tuple[int, int] = (800, 800),
-                 bg_color=(0, 0, 0),
-                 max_rows=15):
-        self._screen_h, self._screen_w = screen_size
-        self._bg_color = bg_color
-        self._img = np.full((self._screen_h, self._screen_w, 3), self._bg_color, dtype=np.uint8)
+    class Screen:
+        def __init__(self,
+                     headers: List[str],
+                     screen_size: Tuple[int, int] = (800, 800),
+                     bg_color=(0, 0, 0),
+                     opening_img: Img | None = None,
+                     max_rows=15):
+            self._screen_h, self._screen_w = screen_size
+            self._bg_color = bg_color
+            self._img = np.full((self._screen_h, self._screen_w, 3), self._bg_color, dtype=np.uint8)
 
-        # Create empty tables at start
-        self.left_table = Table(headers)
-        self.right_table = Table(headers)
+            self._opening_img = opening_img  # שמור את ה־Img
+
+            self.left_table = Table(headers)
+            self.right_table = Table(headers)
 
     def reset(self):
+        if self._opening_img and self._opening_img.img is not None:
+            img_to_show = self._opening_img.img.copy()
+            if img_to_show.shape[:2] != (self._screen_h, self._screen_w):
+                img_to_show = cv2.resize(img_to_show, (self._screen_w, self._screen_h), interpolation=cv2.INTER_AREA)
+            self._img = img_to_show
+        else:
+            # fallback רק אם לא הועבר Img
+            self._img = np.full((self._screen_h, self._screen_w, 3), self._bg_color, dtype=np.uint8)
 
-        reset_img = np.zeros((self._screen_h, self._screen_w, 3), dtype=np.uint8)
-
-        # Create elegant background gradient (black to dark gray)
-        for y in range(self._screen_h):
-            gradient_value = int(60 * (1 - y / self._screen_h))  # from 60 to 0
-            reset_img[y, :] = [gradient_value, gradient_value, gradient_value]
-
-        # Add decorative pattern in background
-        for y in range(0, self._screen_h, 40):
-            for x in range(0, self._screen_w, 40):
-                if (x // 40 + y // 40) % 2 == 0:
-                    cv2.rectangle(reset_img, (x, y), (x + 40, y + 40), (25, 25, 25), -1)
-
-        # Text to display
-        reset_text = "KUNG FU CHESS"
-
-        # Main text settings
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 2.8
-        font_thickness = 5
-
-        # Styled black and white colors
-        main_text_color = (255, 255, 255)  # Pure white
-        shadow_color = (0, 0, 0)  # Pure black
-        glow_color = (200, 200, 200)  # Light gray
-        accent_color = (128, 128, 128)  # Medium gray
-
-        # Calculate text size to center it
-        text_size = cv2.getTextSize(reset_text, font, font_scale, font_thickness)[0]
-        text_x = (self._screen_w - text_size[0]) // 2
-        text_y = (self._screen_h + text_size[1]) // 2
-
-        # Create advanced glow effect (glow effect)
-        for offset in range(12, 0, -2):
-            glow_intensity = int(150 * (1 - offset / 12))
-            glow_thickness = font_thickness + offset
-            cv2.putText(reset_img, reset_text, (text_x, text_y),
-                        font, font_scale, (glow_intensity, glow_intensity, glow_intensity), glow_thickness)
-
-        # Add multiple shadows for depth
-        shadow_offsets = [(6, 6), (4, 4), (2, 2)]
-        shadow_intensities = [0, 40, 80]
-
-        for (offset_x, offset_y), intensity in zip(shadow_offsets, shadow_intensities):
-            cv2.putText(reset_img, reset_text,
-                        (text_x + offset_x, text_y + offset_y),
-                        font, font_scale, (intensity, intensity, intensity), font_thickness)
-
-        # Add main text with border
-        cv2.putText(reset_img, reset_text, (text_x, text_y),
-                    font, font_scale, main_text_color, font_thickness)
-
-        # Add inner border to text
-        cv2.putText(reset_img, reset_text, (text_x, text_y),
-                    font, font_scale, shadow_color, 2)
-
-        # Add decorative underlines
-        underline_y = text_y + 25
-        underline_start_x = text_x - 30
-        underline_end_x = text_x + text_size[0] + 30
-
-        # Thick underline
-        cv2.line(reset_img, (underline_start_x, underline_y),
-                 (underline_end_x, underline_y), main_text_color, 4)
-        # Thin underline above
-        cv2.line(reset_img, (underline_start_x, underline_y - 3),
-                 (underline_end_x, underline_y - 3), accent_color, 2)
-        # Thin underline below
-        cv2.line(reset_img, (underline_start_x, underline_y + 3),
-                 (underline_end_x, underline_y + 3), accent_color, 1)
-
-        # Add advanced decorative border around text
-        border_margin = 80
-        border_top = text_y - text_size[1] - border_margin
-        border_bottom = text_y + border_margin
-        border_left = text_x - border_margin
-        border_right = text_x + text_size[0] + border_margin
-
-        # Outer thick border
-        cv2.rectangle(reset_img, (border_left, border_top),
-                      (border_right, border_bottom), main_text_color, 3)
-
-        # Inner border
-        inner_margin_1 = 15
-        cv2.rectangle(reset_img, (border_left + inner_margin_1, border_top + inner_margin_1),
-                      (border_right - inner_margin_1, border_bottom - inner_margin_1),
-                      accent_color, 2)
-
-        # Thin inner border
-        inner_margin_2 = 25
-        cv2.rectangle(reset_img, (border_left + inner_margin_2, border_top + inner_margin_2),
-                      (border_right - inner_margin_2, border_bottom - inner_margin_2),
-                      glow_color, 1)
-
-        # Add decorative diamonds in corners
-        diamond_positions = [
-            (border_left - 40, border_top - 40),
-            (border_right + 40, border_top - 40),
-            (border_left - 40, border_bottom + 40),
-            (border_right + 40, border_bottom + 40)
-        ]
-
-        for diamond_x, diamond_y in diamond_positions:
-            # Styled diamond
-            diamond_size = 20
-            diamond_points = np.array([
-                [diamond_x, diamond_y - diamond_size],  # Top
-                [diamond_x + diamond_size, diamond_y],  # Right
-                [diamond_x, diamond_y + diamond_size],  # Bottom
-                [diamond_x - diamond_size, diamond_y]  # Left
-            ], np.int32)
-
-            # Fill diamond
-            cv2.fillPoly(reset_img, [diamond_points], main_text_color)
-            # Diamond border
-            cv2.polylines(reset_img, [diamond_points], True, shadow_color, 2)
-            # Center dot
-            cv2.circle(reset_img, (diamond_x, diamond_y), 3, shadow_color, -1)
-
-        # Add decorations on sides
-        side_decorations_left = border_left - 60
-        side_decorations_right = border_right + 60
-        decoration_y_center = (border_top + border_bottom) // 2
-
-        # Left decorations
-        for i in range(-2, 3):
-            y_pos = decoration_y_center + (i * 30)
-            cv2.circle(reset_img, (side_decorations_left, y_pos), 8, main_text_color, 2)
-            cv2.circle(reset_img, (side_decorations_left, y_pos), 4, accent_color, -1)
-
-        # Right decorations
-        for i in range(-2, 3):
-            y_pos = decoration_y_center + (i * 30)
-            cv2.circle(reset_img, (side_decorations_right, y_pos), 8, main_text_color, 2)
-            cv2.circle(reset_img, (side_decorations_right, y_pos), 4, accent_color, -1)
-
-        # Add secondary styled text
-        subtitle = "GAME RESET"
-        subtitle_font_scale = 1.0
-        subtitle_thickness = 2
-        subtitle_size = cv2.getTextSize(subtitle, font, subtitle_font_scale, subtitle_thickness)[0]
-        subtitle_x = (self._screen_w - subtitle_size[0]) // 2
-        subtitle_y = border_bottom + 60
-
-        # Shadow for subtitle
-        cv2.putText(reset_img, subtitle, (subtitle_x + 2, subtitle_y + 2),
-                    font, subtitle_font_scale, shadow_color, subtitle_thickness)
-        # Subtitle text
-        cv2.putText(reset_img, subtitle, (subtitle_x, subtitle_y),
-                    font, subtitle_font_scale, glow_color, subtitle_thickness)
-
-        # Add decorative line under subtitle
-        subtitle_line_y = subtitle_y + 15
-        subtitle_line_start = subtitle_x - 20
-        subtitle_line_end = subtitle_x + subtitle_size[0] + 20
-        cv2.line(reset_img, (subtitle_line_start, subtitle_line_y),
-                 (subtitle_line_end, subtitle_line_y), accent_color, 2)
-
-        # Display screen with styled text
-        self._img = reset_img
-
-        # Clear tables (reset data)
         self.left_table.update_data([])
         self.right_table.update_data([])
 

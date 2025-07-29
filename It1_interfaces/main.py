@@ -8,6 +8,7 @@ if __name__ == "__main__":
     pieces_root = base_path.parent / "PIECES"
     placement_csv = base_path / "board.csv"
     sounds_root = base_path.parent / "sounds"
+    opening_image = base_path / "photos" / "opening.png"
 
     board = Board(
         cell_H_pix=80,
@@ -19,7 +20,7 @@ if __name__ == "__main__":
         img=Img().read("../board.png", size=(640, 640))
     )
 
-    screen = Screen(['time', 'source', 'destination'], screen_size=(780, 1600), bg_color=(255, 255, 255))
+    screen = Screen(['time', 'source', 'destination'], screen_size=(780, 1600), bg_color=(255, 255, 255), Img().read(opening_image, size=(780, 1600)))
 
     from Game import Game
     game = Game(screen, board, pieces_root, placement_csv, sounds_root)
