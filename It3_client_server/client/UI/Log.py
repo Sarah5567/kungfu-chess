@@ -1,6 +1,7 @@
 from typing import Any
-from shared.EventBus import Event
-from datetime import datetime
+from server.game_logic.EventBus import Event
+
+
 class Log:
     def __init__(self):
         self.log: list[dict[str, Any]] = []

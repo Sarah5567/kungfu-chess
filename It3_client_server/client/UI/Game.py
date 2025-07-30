@@ -3,25 +3,25 @@ import pathlib
 import time
 import queue
 import cv2
-from typing import Dict, Tuple, Optional, Callable
+from typing import Dict, Tuple, Optional, Callable, Any
 import threading
 import keyboard
-from shared.Board import Board
-from shared.Command import Command
-from shared.enums.EventsNames import EventsNames
-from Log import Log
-from shared.Piece import Piece
-from Score import Score
-from Screen import Screen
-from shared.EventBus import event_bus, Event
-from PieceFactory import PieceFactory
+from client.UI.Board import Board
+from client.UI.Command import Command
+from client.UI.enums.EventsNames import EventsNames
+from client.UI.Log import Log
+from client.UI.Piece import Piece
+from client.UI.Score import Score
+from client.UI.Screen import Screen
+from client.UI.EventBus import event_bus, Event
+from client.UI.PieceFactory import PieceFactory
 from playsound import playsound
-from shared.enums.StatesNames import StatesNames
+from client.UI.enums.StatesNames import StatesNames
 
 
 class Game:
     def __init__(self, screen: Screen, board: Board, pieces_root: pathlib.Path, placement_csv: pathlib.Path,
-                 sounds_root: pathlib.Path, websocket, role: str):
+                 sounds_root: pathlib.Path, websocket, role: str, board_state: dict[str, Any]):
         self.screen = screen
         self._sounds_root = sounds_root
         self.board = board
@@ -33,7 +33,7 @@ class Game:
         self.pieces: Dict[str, Piece] = {}
         self.pos_to_piece: Dict[Tuple[int, int], Piece] = {}
         self._current_board = None
-        self._load_pieces_from_csv(placement_csv)
+        self._handle_board_update(Event(EventsNames.INIT, board_state))
 
         self.focus_cell = (0, 0)
         self.focus_cell2 = (self.board.H_cells - 1, 0)
@@ -69,7 +69,23 @@ class Game:
         ]:
             event_bus.subscribe(event, self.play_sounds)
 
-        event_bus.subscribe(EventsNames.GET_RESPONSE, self._get_response)
+        event_bus.subscribe(EventsNames.BOARD_UPDATE, self._handle_board_update)
+
+    def _handle_board_update(self, event: Event):
+        self.pieces.clear()
+        self.pos_to_piece.clear()
+
+        updated_pieces = event.data.get("pieces", {})
+        for pid, piece_data in updated_pieces.items():
+            pos : tuple[int, int] = piece_data["pos"]
+            state = piece_data["state"]
+
+            if not pid in self.pieces:
+                piece = self.piece_factory.create_piece(pid, pos)
+                self.pieces[pid] = piece
+            self.pieces[pid]._state = state["name"]
+
+
 
     def _get_response(self, event : Event):
         event_type: str = event.data['type']
@@ -89,19 +105,6 @@ class Game:
             playsound(str(self._sounds_root / event.data['sound']))
 
         threading.Thread(target=_play, daemon=True).start()
-
-    def _load_pieces_from_csv(self, csv_path: pathlib.Path):
-        with csv_path.open() as f:
-            reader = csv.reader(f)
-            for row_idx, row in enumerate(reader):
-                for col_idx, code in enumerate(row):
-                    code = code.strip()
-                    if not code:
-                        continue
-                    cell = (row_idx, col_idx)
-                    piece = self.piece_factory.create_piece(code, cell)
-                    self.pieces[piece.get_id()] = piece
-                    self.pos_to_piece[cell] = piece
 
     def game_time_ms(self) -> int:
         return int((time.monotonic() - self.start_time) * 1000)
@@ -160,45 +163,22 @@ class Game:
         self.start_time = time.monotonic()
         self.screen.reset()
         self.screen.show("Chess")
+
         while True:
             key = cv2.waitKey(0)
-            if key == 13:  # 13 הוא הקוד של מקש Enter
+            if key == 13:  # Enter
                 break
 
         self.start_keyboard_thread()
 
-        start_ms = self.game_time_ms()
-        for piece in self.pieces.values():
-            piece.reset(start_ms)
-
         while self._running and not self._is_win():
-            now = self.game_time_ms()
-
-            for piece in self.pieces.values():
-                piece.update(now)
-
-            event_bus.publish(EventsNames.SEND_REQUEST,
-                              {'type': 'board_update', 'params': {'cell_H_pix': self.board.cell_H_pix,
-                                                                  'cell_W_pix': self.board.cell_W_pix,
-                                                                  'pieces': self.pieces,
-                                                                  'piece_factory': self.piece_factory}})
-
-            while not self.user_input_queue.empty():
-                cmd = self.user_input_queue.get()
-                event_bus.publish(EventsNames.SEND_REQUEST, {'type': 'move', 'params': {'src_cell': self.board.algebraic_to_cell(cmd.params[0]),
-                                                                                        'dst_cell': self.board.algebraic_to_cell(cmd.params[1]),
-                                                                                        'pieces': self.pieces,
-                                                                                        'cmd': cmd}})
-
             self._draw()
-
             self.screen.show("Chess")
             cv2.waitKey(1)
 
         self._announce_win()
         self._running = False
         cv2.destroyAllWindows()
-
 
     def get_path_cells(self, src: Tuple[int, int], dst: Tuple[int, int]) -> list[Tuple[int, int]]:
         path = []
@@ -307,7 +287,7 @@ class Game:
                     type=move_type,
                     params=[src_alg, dst_alg]
                 )
-                self.user_input_queue.put(cmd)
+                event_bus.subscribe(EventsNames.SEND_REQUEST, {'name': EventsNames.ACTION_REQUEST, 'cmd': cmd})
             reset_func()
             return "source", None
 

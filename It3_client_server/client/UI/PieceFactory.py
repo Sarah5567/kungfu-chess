@@ -49,14 +49,11 @@ class PieceFactory:
         states[StatesNames.SHORT_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
         return states[StatesNames.IDLE]
 
-    def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
+    def create_piece(self, piece_id: str, cell: Tuple[int, int]) -> Piece:
+        p_type : str = piece_id[:2]
         if p_type not in self._templates:
             piece_dir = self.pieces_root / p_type
             init_state = self._build_state_machine(piece_dir,cell)
-        if p_type not in self.counter:
-            self.counter[p_type] = 0
-        self.counter[p_type] += 1
-        unique_id = f"{p_type}_{self.counter[p_type]}"
         # Create and return the piece with the unique id.
-        piece = Piece(piece_id=unique_id, init_state=init_state)
+        piece = Piece(piece_id=piece_id, init_state=init_state)
         return piece

@@ -7,64 +7,15 @@ import cv2
 
 
 class Piece:
-    def __init__(self, piece_id: str, init_state: State):
+    def __init__(self, piece_id: str, init_state: State, pos : (int, int)):
         self._id = piece_id
         self._state = init_state
         self._current_cmd: Optional[Command] = None
+        self.pos = pos
 
 
     def on_command(self, cmd: Command):
-        # if self.is_command_possible(cmd, dst_empty) and self._state.is_command_possible(cmd):
-        #     if cmd.type == StatesNames.MOVE:
-        #         self.publish_move(EventsNames.BLACK_MOVE if self._id[1] == 'B' else EventsNames.WHITE_MOVE, cmd, now_ms)
-        #         self._current_cmd = cmd
-        #     if cmd.type == StatesNames.JUMP:
-        #         event_bus.publish(EventsNames('jump'), {'sound': 'jump.wav'})
         self._state = self._state.process_command(cmd)
-
-    # def publish_move(self, event_name : EventsNames, cmd : Command, now_ms : int):
-    #     player : str = cmd.piece_id[1]
-    #     source_cell : str = cmd.params[0]
-    #     destination_cell : str = cmd.params[1]
-    #     event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
-
-    # def is_command_possible(self, cmd: Command, dst_empty: bool) -> bool:
-    #     if cmd.type != StatesNames.MOVE:
-    #         return cmd is not None and cmd.type in self._state.transitions
-    #
-    #     src = self._state._physics.start_cell
-    #     dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
-    #     legal = self._state._moves.get_moves(*src)
-    #
-    #     # חייל (Pawn)
-    #     if self._id[0] == 'P':
-    #         src_y, src_x = src
-    #         dst_y, dst_x = dst
-    #
-    #         direction = -1 if self._id[1] == 'W' else 1  # לבנים עולים, שחורים יורדים
-    #
-    #         # תנועה קדימה צעד אחד
-    #         if dst_x == src_x and dst_y == src_y + direction and dst_empty:
-    #             return True
-    #
-    #         # תנועה קדימה שני צעדים (אם בעמדת פתיחה)
-    #         start_row = 6 if self._id[1] == 'W' else 1
-    #         if (src_y == start_row and
-    #                 dst_x == src_x and
-    #                 dst_y == src_y + 2 * direction and
-    #                 dst_empty):
-    #             return True
-    #
-    #         # אכילה באלכסון
-    #         if abs(dst_x - src_x) == 1 and dst_y == src_y + direction and not dst_empty:
-    #             return True
-    #
-    #         return False  # כל השאר לא חוקי
-    #
-    #     # כלים אחרים – משתמשים בלוגיקה הרגילה
-    #     return dst in legal
-    #
-    #     return cmd is not None and cmd.type in self._state.transitions
 
     def reset(self, start_ms: int):
         if self._current_cmd:
@@ -79,11 +30,10 @@ class Piece:
             self.on_command(cmd, now_ms)
 
     def draw_on_board(self, board: Board, now_ms: int):
-        pos = self._state._physics.get_pos()
         img = self._state._graphics.get_img().img
         if img is not None:
             h, w = img.shape[:2]
-            x, y = int(pos[0]), int(pos[1])
+            x, y = int(self.pos[0]), int(self.pos[1])
 
             board_img = board.img.img
 

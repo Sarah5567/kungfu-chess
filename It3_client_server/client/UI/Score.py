@@ -1,4 +1,4 @@
-from shared.EventBus import Event
+from server.game_logic.EventBus import Event
 
 class Score:
     _piece_score = {

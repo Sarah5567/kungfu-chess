@@ -1,9 +1,13 @@
-from shared.PhysicsFactory import PhysicsFactory
-from shared.Board import Board
-from shared.Command import Command
-from shared.State import State
+from server.game_logic.PhysicsFactory import PhysicsFactory
+from server.game_logic.Board import Board
+from server.game_logic.Command import Command
+from server.game_logic.EventBus import event_bus
+from server.game_logic.enums.EventsNames import EventsNames
+from server.game_logic.State import State
 from typing import Optional
 import cv2
+
+from server.game_logic.enums.StatesNames import StatesNames
 
 
 class Piece:
@@ -14,57 +18,54 @@ class Piece:
 
 
     def on_command(self, cmd: Command):
-        # if self.is_command_possible(cmd, dst_empty) and self._state.is_command_possible(cmd):
-        #     if cmd.type == StatesNames.MOVE:
-        #         self.publish_move(EventsNames.BLACK_MOVE if self._id[1] == 'B' else EventsNames.WHITE_MOVE, cmd, now_ms)
-        #         self._current_cmd = cmd
-        #     if cmd.type == StatesNames.JUMP:
-        #         event_bus.publish(EventsNames('jump'), {'sound': 'jump.wav'})
+        if cmd.type == StatesNames.MOVE:
+            self.publish_move(EventsNames.BLACK_MOVE if self._id[1] == 'B' else EventsNames.WHITE_MOVE, cmd, now_ms)
+            self._current_cmd = cmd
+        if cmd.type == StatesNames.JUMP:
+            event_bus.publish(EventsNames('jump'), {'sound': 'jump.wav'})
         self._state = self._state.process_command(cmd)
 
-    # def publish_move(self, event_name : EventsNames, cmd : Command, now_ms : int):
-    #     player : str = cmd.piece_id[1]
-    #     source_cell : str = cmd.params[0]
-    #     destination_cell : str = cmd.params[1]
-    #     event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
+    def publish_move(self, event_name : EventsNames, cmd : Command, now_ms : int):
+        player : str = cmd.piece_id[1]
+        source_cell : str = cmd.params[0]
+        destination_cell : str = cmd.params[1]
+        event_bus.publish(event_name, {'player': player, 'time': now_ms, 'source': source_cell, 'destination': destination_cell, 'sound': 'move.wav'})
 
-    # def is_command_possible(self, cmd: Command, dst_empty: bool) -> bool:
-    #     if cmd.type != StatesNames.MOVE:
-    #         return cmd is not None and cmd.type in self._state.transitions
-    #
-    #     src = self._state._physics.start_cell
-    #     dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
-    #     legal = self._state._moves.get_moves(*src)
-    #
-    #     # חייל (Pawn)
-    #     if self._id[0] == 'P':
-    #         src_y, src_x = src
-    #         dst_y, dst_x = dst
-    #
-    #         direction = -1 if self._id[1] == 'W' else 1  # לבנים עולים, שחורים יורדים
-    #
-    #         # תנועה קדימה צעד אחד
-    #         if dst_x == src_x and dst_y == src_y + direction and dst_empty:
-    #             return True
-    #
-    #         # תנועה קדימה שני צעדים (אם בעמדת פתיחה)
-    #         start_row = 6 if self._id[1] == 'W' else 1
-    #         if (src_y == start_row and
-    #                 dst_x == src_x and
-    #                 dst_y == src_y + 2 * direction and
-    #                 dst_empty):
-    #             return True
-    #
-    #         # אכילה באלכסון
-    #         if abs(dst_x - src_x) == 1 and dst_y == src_y + direction and not dst_empty:
-    #             return True
-    #
-    #         return False  # כל השאר לא חוקי
-    #
-    #     # כלים אחרים – משתמשים בלוגיקה הרגילה
-    #     return dst in legal
-    #
-    #     return cmd is not None and cmd.type in self._state.transitions
+    def is_command_possible(self, cmd: Command, dst_empty: bool) -> bool:
+        if cmd.type != StatesNames.MOVE:
+            return cmd is not None and cmd.type in self._state.transitions
+
+        src = self._state._physics.start_cell
+        dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
+        legal = self._state._moves.get_moves(*src)
+
+        # חייל (Pawn)
+        if self._id[0] == 'P':
+            src_y, src_x = src
+            dst_y, dst_x = dst
+
+            direction = -1 if self._id[1] == 'W' else 1  # לבנים עולים, שחורים יורדים
+
+            # תנועה קדימה צעד אחד
+            if dst_x == src_x and dst_y == src_y + direction and dst_empty:
+                return self._state.is_command_possible(cmd)
+
+            # תנועה קדימה שני צעדים (אם בעמדת פתיחה)
+            start_row = 6 if self._id[1] == 'W' else 1
+            if (src_y == start_row and
+                    dst_x == src_x and
+                    dst_y == src_y + 2 * direction and
+                    dst_empty):
+                return self._state.is_command_possible(cmd)
+
+            # אכילה באלכסון
+            if abs(dst_x - src_x) == 1 and dst_y == src_y + direction and not dst_empty:
+                return self._state.is_command_possible(cmd)
+
+            return False  # כל השאר לא חוקי
+
+        # כלים אחרים – משתמשים בלוגיקה הרגילה
+        return dst in legal and self._state.is_command_possible(cmd)
 
     def reset(self, start_ms: int):
         if self._current_cmd:
@@ -115,8 +116,22 @@ class Piece:
             return cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
         return img
 
-    def get_id(self):
+    def get_id(self) -> str:
         return self._id
+
+    def get_color(self) -> str:
+        return 'black' if self._id[1] == 'B' else 'white'
+
+    def get_type(self) -> str:
+        type_map = {
+            'P': 'Pawn',
+            'R': 'Rook',
+            'N': 'Knight',
+            'B': 'Bishop',
+            'Q': 'Queen',
+            'K': 'King'
+        }
+        return type_map.get(self._id[0], 'Unknown')
 
     def get_command(self):
         return self._state.get_command()

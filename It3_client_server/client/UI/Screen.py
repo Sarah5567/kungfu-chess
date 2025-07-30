@@ -1,8 +1,8 @@
 from typing import Tuple, Any, List
 import cv2
 import numpy as np
-from shared.Board import Board
-from Table import Table  # Required that your Table class contains log_to_table_data
+from client.UI.Board import Board
+from client.UI.Table import Table  # Required that your Table class contains log_to_table_data
 
 class Screen:
     def __init__(self,
