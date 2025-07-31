@@ -3,17 +3,15 @@ from server.game_logic.Moves import Moves
 from server.game_logic.Physics import Physics
 from typing import Dict, Optional
 
-from server.game_logic.enums.StatesNames import StatesNames
-
 
 class State:
     def __init__(self, moves: Moves, physics: Physics):
         self._moves = moves
         self._physics = physics
-        self.transitions: Dict[StatesNames, "State"] = {}
+        self.transitions: Dict[str, "State"] = {}
         self._current_command: Optional[Command] = None
 
-    def set_transition(self, event: StatesNames, target: "State"):
+    def set_transition(self, event: str, target: "State"):
         self.transitions[event] = target
 
     def reset(self, cmd: Command):

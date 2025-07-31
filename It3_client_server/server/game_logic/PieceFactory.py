@@ -6,7 +6,6 @@ from server.game_logic.Moves import Moves
 from server.game_logic.PhysicsFactory import PhysicsFactory
 from server.game_logic.Piece import Piece
 from server.game_logic.State import State
-from server.game_logic.enums.StatesNames import StatesNames
 
 
 class PieceFactory:
@@ -18,13 +17,13 @@ class PieceFactory:
         self.counter = {}
     def _build_state_machine(self, piece_dir: pathlib.Path, cell: Tuple[int, int]) -> State:
         """Build a state machine for a piece from its directory."""
-        states: Dict[StatesNames, State] = {}
+        states: Dict[str, State] = {}
         moves = Moves(piece_dir / "moves.txt", (self.board.H_cells, self.board.W_cells))
         states_root = piece_dir / "states"
         for state_dir in states_root.iterdir():
             if not state_dir.is_dir():
                 continue
-            state_name = StatesNames(state_dir.name)
+            state_name = state_dir.name.upper()
             cfg_path = state_dir / "config.json"
             with open(cfg_path, "r") as f:
                 cfg = json.load(f)
@@ -34,13 +33,13 @@ class PieceFactory:
                 cfg["physics"]
             )
             states[state_name] = State(moves, physics)
-        states[StatesNames.IDLE].set_transition(StatesNames.MOVE, states[StatesNames.MOVE])
-        states[StatesNames.IDLE].set_transition(StatesNames.JUMP, states[StatesNames.JUMP])
-        states[StatesNames.MOVE].set_transition(StatesNames.LONG_REST, states[StatesNames.LONG_REST])
-        states[StatesNames.JUMP].set_transition(StatesNames.SHORT_REST, states[StatesNames.SHORT_REST])
-        states[StatesNames.LONG_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
-        states[StatesNames.SHORT_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
-        return states[StatesNames.IDLE]
+        states['IDLE'].set_transition('MOVE', states['MOVE'])
+        states['IDLE'].set_transition('JUMP', states['JUMP'])
+        states['MOVE'].set_transition('LONG_REST', states['LONG_REST'])
+        states['JUMP'].set_transition('SHORT_REST', states['SHORT_REST'])
+        states['LONG_REST'].set_transition('IDLE', states['IDLE'])
+        states['SHORT_REST'].set_transition('IDLE', states['IDLE'])
+        return states['IDLE']
 
     def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
         if p_type not in self._templates:

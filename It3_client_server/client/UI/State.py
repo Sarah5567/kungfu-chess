@@ -2,16 +2,14 @@ from client.UI.Command import Command
 from client.UI.Graphics import Graphics
 from typing import Dict, Optional
 
-from shared.enums.StatesNames import StatesNames
-
 
 class State:
     def __init__(self, graphics: Graphics):
         self._graphics = graphics
-        self.transitions: Dict[StatesNames, "State"] = {}
+        self.transitions: Dict[str, "State"] = {}
         self._current_command: Optional[Command] = None
 
-    def set_transition(self, event: StatesNames, target: "State"):
+    def set_transition(self, event: str, target: "State"):
         self.transitions[event] = target
 
     def reset(self, time_ms: int):

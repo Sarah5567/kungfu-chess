@@ -1,7 +1,6 @@
-from shared.PhysicsFactory import PhysicsFactory
-from shared.Board import Board
-from shared.Command import Command
-from shared.State import State
+from client.UI.Board import Board
+from client.UI.Command import Command
+from client.UI.State import State
 from typing import Optional
 import cv2
 
@@ -19,7 +18,7 @@ class Piece:
 
     def reset(self, start_ms: int):
         if self._current_cmd:
-            self._state.reset(self._current_cmd)
+            self._state.reset(start_ms)
 
     def update(self, now_ms: int):
         self._state.update(now_ms)
@@ -27,7 +26,7 @@ class Piece:
             next_state =  next(iter(self._state.transitions.keys()))
             new_cell = self._state._physics.get_pos_in_cell()
             cmd = Command(now_ms, self._id, next_state, [new_cell, new_cell])
-            self.on_command(cmd, now_ms)
+            self.on_command(cmd)
 
     def draw_on_board(self, board: Board, now_ms: int):
         img = self._state._graphics.get_img().img
@@ -71,25 +70,25 @@ class Piece:
     def get_command(self):
         return self._state.get_command()
 
-    def clone_to(self, cell: tuple[int, int], physics_factory: PhysicsFactory) -> "Piece":
-        """
-        Clone this piece to a new piece at a different cell.
-        Graphics is copied, physics is recreated (new cell), moves are shared.
-        """
-
-        graphics_copy = self._state._graphics.copy()
-
-
-        state_name = self._state._physics.__class__.__name__.replace("Physics", "").lower()
-        speed = getattr(self._state._physics, "speed", 1.0)
-
-        cfg = {"physics": {"speed_m_per_sec": speed}}
-
-        new_physics = physics_factory.create(state_name, cell, cfg)
-
-        new_state = State(self._state._moves, graphics_copy, new_physics)
-
-        for event, target in self._state.transitions.items():
-            new_state.set_transition(event, target)
-
-        return Piece(self._id, new_state)
+    # def clone_to(self, cell: tuple[int, int]) -> "Piece":
+    #     """
+    #     Clone this piece to a new piece at a different cell.
+    #     Graphics is copied, physics is recreated (new cell), moves are shared.
+    #     """
+    #
+    #     graphics_copy = self._state._graphics.copy()
+    #
+    #
+    #     state_name = self._state._physics.__class__.__name__.replace("Physics", "").lower()
+    #     speed = getattr(self._state._physics, "speed", 1.0)
+    #
+    #     cfg = {"physics": {"speed_m_per_sec": speed}}
+    #
+    #     new_physics = physics_factory.create(state_name, cell, cfg)
+    #
+    #     new_state = State(self._state._moves, graphics_copy, new_physics)
+    #
+    #     for event, target in self._state.transitions.items():
+    #         new_state.set_transition(event, target)
+    #
+    #     return Piece(self._id, new_state)

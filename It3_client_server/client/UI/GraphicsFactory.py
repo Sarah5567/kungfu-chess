@@ -1,6 +1,6 @@
 import pathlib
-from shared.Graphics import Graphics
-from shared.Board import Board
+from client.UI.Graphics import Graphics
+from client.UI.Board import Board
 
 
 class GraphicsFactory:

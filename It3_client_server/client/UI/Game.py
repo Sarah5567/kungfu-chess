@@ -8,7 +8,6 @@ import threading
 import keyboard
 from client.UI.Board import Board
 from client.UI.Command import Command
-from client.UI.enums.EventsNames import EventsNames
 from client.UI.Log import Log
 from client.UI.Piece import Piece
 from client.UI.Score import Score
@@ -16,7 +15,6 @@ from client.UI.Screen import Screen
 from client.UI.EventBus import event_bus, Event
 from client.UI.PieceFactory import PieceFactory
 from playsound import playsound
-from client.UI.enums.StatesNames import StatesNames
 
 
 class Game:
@@ -33,7 +31,7 @@ class Game:
         self.pieces: Dict[str, Piece] = {}
         self.pos_to_piece: Dict[Tuple[int, int], Piece] = {}
         self._current_board = None
-        self._handle_board_update(Event(EventsNames.INIT, board_state))
+        self._handle_board_update(Event("INIT", board_state))
 
         self.focus_cell = (0, 0)
         self.focus_cell2 = (self.board.H_cells - 1, 0)
@@ -53,23 +51,23 @@ class Game:
         self.subscriptions(sounds_root)
 
     def subscriptions(self, sounds_root):
-        event_bus.subscribe(EventsNames.BLACK_MOVE, self.black_log.update_log)
-        event_bus.subscribe(EventsNames.WHITE_MOVE, self.white_log.update_log)
+        event_bus.subscribe("BLACK_MOVE", self.black_log.update_log)
+        event_bus.subscribe("WHITE_MOVE", self.white_log.update_log)
 
-        event_bus.subscribe(EventsNames.BLACK_CAPTURE, self.black_score.update_score)
-        event_bus.subscribe(EventsNames.WHITE_CAPTURE, self.white_score.update_score)
+        event_bus.subscribe('BLACK_CAPTURE', self.black_score.update_score)
+        event_bus.subscribe('WHITE_CAPTURE', self.white_score.update_score)
 
         for event in [
-            EventsNames.BLACK_MOVE,
-            EventsNames.WHITE_MOVE,
-            EventsNames.BLACK_CAPTURE,
-            EventsNames.WHITE_CAPTURE,
-            EventsNames.JUMP,
-            EventsNames.VICTORY,
+            "BLACK_MOVE",
+            "WHITE_MOVE",
+            "BLACK_CAPTURE",
+            "WHITE_CAPTURE",
+            "JUMP",
+            "VICTORY",
         ]:
             event_bus.subscribe(event, self.play_sounds)
 
-        event_bus.subscribe(EventsNames.BOARD_UPDATE, self._handle_board_update)
+        event_bus.subscribe("BOARD_UPDATE", self._handle_board_update)
 
     def _handle_board_update(self, event: Event):
         self.pieces.clear()
@@ -162,17 +160,23 @@ class Game:
     def run(self):
         self.start_time = time.monotonic()
         self.screen.reset()
+
+        # while True:
+        #     key = cv2.waitKey(0)
+        #     if key == 13:  # Enter
+        #         break
+
+        for piece in self.pieces.values():
+            piece.reset(self.game_time_ms())
         self.screen.show("Chess")
 
-        while True:
-            key = cv2.waitKey(0)
-            if key == 13:  # Enter
-                break
 
         self.start_keyboard_thread()
 
         while self._running and not self._is_win():
             self._draw()
+            for piece in self.pieces.values():
+                piece.update(self.game_time_ms())
             self.screen.show("Chess")
             cv2.waitKey(1)
 
@@ -233,7 +237,7 @@ class Game:
         return len(kings) <= 1
 
     def _announce_win(self):
-        event_bus.publish(EventsNames.VICTORY, {'sound': 'victory.WAV'})
+        event_bus.publish("VICTORY", {'sound': 'victory.WAV'})
         king = next(p for p in self.pieces.values() if p.get_id().lower().startswith("k"))
         winner_name = 'black' if king.get_id()[1] == 'B' else 'white'
         self.screen.announce_win(winner_name)
@@ -280,14 +284,14 @@ class Game:
             print(f"User {user_id} destination selected at {dst_cell} -> {dst_alg}")
             piece = self.pos_to_piece.get(src_cell)
             if piece:
-                move_type = StatesNames.JUMP if src_cell == dst_cell else StatesNames.MOVE
+                move_type = 'JUMP' if src_cell == dst_cell else 'MOVE'
                 cmd = Command(
                     timestamp=self.game_time_ms(),
                     piece_id=piece.get_id(),
                     type=move_type,
                     params=[src_alg, dst_alg]
                 )
-                event_bus.subscribe(EventsNames.SEND_REQUEST, {'name': EventsNames.ACTION_REQUEST, 'cmd': cmd})
+                event_bus.subscribe("SEND_REQUEST", {'name': "ACTION_REQUEST", 'cmd': cmd})
             reset_func()
             return "source", None
 

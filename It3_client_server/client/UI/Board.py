@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import copy
 from typing import Tuple
 
-from shared.Img import Img
+from client.UI.Img import Img
 
 @dataclass
 class Board:

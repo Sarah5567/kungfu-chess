@@ -1,4 +1,4 @@
-import json
+import asyncio
 import pathlib
 import csv
 import queue
@@ -7,8 +7,6 @@ from typing import Dict, Tuple, Optional
 from server.game_logic.Piece import Piece
 from server.game_logic.Board import Board
 from server.game_logic.Command import Command
-from server.game_logic.enums.StatesNames import StatesNames
-from server.game_logic.enums.EventsNames import EventsNames
 from server.game_logic.PieceFactory import PieceFactory
 from server.game_logic.EventBus import event_bus
 
@@ -25,7 +23,7 @@ class Game:
         self.subscriptions()
 
     def subscriptions(self):
-        event_bus.subscribe(EventsNames.ACTION_REQUEST, lambda event: self.user_input_queue.put(event.data['cmd']))
+        event_bus.subscribe('ACTION_REQUEST', lambda event: self.user_input_queue.put(event.data['cmd']))
 
     def _load_pieces_from_csv(self, csv_path: pathlib.Path):
         with csv_path.open() as f:
@@ -62,14 +60,14 @@ class Game:
             return None  # Move is blocked
 
         if moving_piece.is_command_possible(cmd, self.game_time_ms(), dst_empty):
-            moving_piece.on_command(cmd)
+            moving_piece.on_command(cmd, self.game_time_ms())
 
         # Apply the command to the piece
             self._update_position_mapping()
 
         # Return both the command and updated board state
         return {
-            "type": EventsNames.BLACK_MOVE if moving_piece.get_id()[1] == 'B' else EventsNames.WHITE_MOVE,
+            "type": 'BLACK_MOVE' if moving_piece.get_id()[1] == 'B' else 'WHITE_MOVE',
             "data": {
                 "command": cmd
             }
@@ -103,11 +101,11 @@ class Game:
 
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
-                if piece._state._current_command and piece._state._current_command.type == StatesNames.JUMP:
+                if piece._state._current_command and piece._state._current_command.type == 'JUMP':
                     continue
                 if self.should_capture(opponent, piece):
                     event_bus.publish(
-                        EventsNames.BLACK_CAPTURE if piece.get_id()[1] == 'B' else EventsNames.WHITE_CAPTURE,
+                        'BLACK_CAPTURE' if piece.get_id()[1] == 'B' else 'WHITE_CAPTURE',
                         {'capture_piece': piece.get_id(), 'captured_piece': opponent.get_id(), 'sound': 'capture.wav'}
                     )
                     self.pos_to_piece[pos] = piece
@@ -115,7 +113,7 @@ class Game:
                 else:
                     to_remove.add(piece.get_id())
                     event_bus.publish(
-                        EventsNames.BLACK_CAPTURE if opponent.get_id()[1] == 'B' else EventsNames.WHITE_CAPTURE,
+                       'BLACK_CAPTURE' if opponent.get_id()[1] == 'B' else 'WHITE_CAPTURE',
                         {'capture_piece': opponent.get_id(), 'captured_piece': piece.get_id(), 'sound': 'capture.wav'}
                     )
             else:
@@ -135,10 +133,10 @@ class Game:
 
     def should_capture(self, opponent, piece):
         if not opponent._state._current_command or opponent._state._current_command.type in [
-            StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
+            'IDLE', 'LONG_REST', 'SHORT_REST']:
             return True
         if piece._state._current_command and piece._state._current_command.type not in  [
-            StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
+            'IDLE', 'LONG_REST', 'SHORT_REST']:
             return opponent._state._physics.start_time > piece._state._physics.start_time
         return False
 
@@ -154,7 +152,7 @@ class Game:
             }
         }
 
-    def run(self):
+    async def run(self):
         self.start_time = time.monotonic()
         start_ms = self.game_time_ms()
 
@@ -185,12 +183,12 @@ class Game:
             # Publish board state if it changed
             current_state = self.get_board_state()
 
-            event_bus.publish(EventsNames.BOARD_UPDATE, self.get_board_state())
-            time.sleep(0.01)  # reduce CPU usage
+            event_bus.publish('BOARD_UPDATE', self.get_board_state())
+            await asyncio.sleep(0.01)  # reduce CPU usage
 
             # Check win condition
         winner = self.winner()
-        event_bus.publish(EventsNames.VICTORY, {"winner": winner})
+        event_bus.publish('VICTORY', {"winner": winner})
 
 
     def winner(self) -> str | None:
@@ -198,3 +196,4 @@ class Game:
         if len(kings) == 1:
             return kings[0].get_color()
         return None
+
