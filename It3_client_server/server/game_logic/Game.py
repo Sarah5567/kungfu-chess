@@ -145,8 +145,8 @@ class Game:
             "pieces": {
                 pid: {
                     "id": pid,
-                    "pos": piece._state._physics.get_pos(),
-                    "state": piece._state
+                    "pos": piece.get_pos(),
+                    "state": piece.get_state()
                 }
                 for pid, piece in self.pieces.items()
             }

@@ -105,8 +105,6 @@ class MovePhysics(Physics):
     def can_capture(self) -> bool:
         return True
 
-    def get_pos(self) -> Tuple[int, int]:
-        return self.pos
 
 
 class JumpPhysics(Physics):

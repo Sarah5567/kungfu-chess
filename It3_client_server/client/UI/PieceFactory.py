@@ -16,7 +16,7 @@ class PieceFactory:
         self._graphics_factory = GraphicsFactory(board)
         self._templates: Dict[str, Piece] = {}
         self.counter = {}
-    def _build_state_machine(self, piece_dir: pathlib.Path, cell: Tuple[int, int]) -> State:
+    def _build_state_machine(self, piece_dir: pathlib.Path, init_state = 'IDLE') -> State:
         """Build a state machine for a piece from its directory."""
         states: Dict[str, State] = {}
         # moves = Moves(piece_dir / "moves.txt", (self.board.H_cells, self.board.W_cells))
@@ -24,7 +24,7 @@ class PieceFactory:
         for state_dir in states_root.iterdir():
             if not state_dir.is_dir():
                 continue
-            state_name = state_dir.name
+            state_name = state_dir.name.upper()
             cfg_path = state_dir / "config.json"
             with open(cfg_path, "r") as f:
                 cfg = json.load(f)
@@ -40,13 +40,13 @@ class PieceFactory:
         states['JUMP'].set_transition('SHORT_REST', states['SHORT_REST'])
         states['LONG_REST'].set_transition('IDLE', states['IDLE'])
         states['SHORT_REST'].set_transition('IDLE', states['IDLE'])
-        return states['IDLE']
+        return states[init_state]
 
-    def create_piece(self, piece_id: str, cell: Tuple[int, int]) -> Piece:
+    def create_piece(self, piece_id: str, pos : tuple[float, float], state : str = 'IDLE') -> Piece:
         p_type : str = piece_id[:2]
         if p_type not in self._templates:
-            piece_dir = self.pieces_root / p_type
-            init_state = self._build_state_machine(piece_dir,cell)
+            piece_dir = self.pieces_root / p_type.lower()
+            init_state = self._build_state_machine(piece_dir, state)
         # Create and return the piece with the unique id.
-        piece = Piece(piece_id=piece_id, init_state=init_state)
+        piece = Piece(piece_id=piece_id, init_state=init_state, pos = pos)
         return piece

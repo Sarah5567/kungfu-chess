@@ -30,7 +30,6 @@ async def connect_and_start():
         try:
             board_data = event.data
             game_state.board_state = board_data['board_state']
-
             game_board = Board(
                 cell_H_pix=board_data['cell_H_pix'],
                 cell_W_pix=board_data['cell_W_pix'],
@@ -51,7 +50,7 @@ async def connect_and_start():
         print(f"Role assigned: {game_state.role}")
 
     # Subscribe to events before connecting
-    event_bus.subscribe("init", handle_init)
+    event_bus.subscribe("INIT", handle_init)
     event_bus.subscribe("ROLE", handle_role)
 
     try:
@@ -126,8 +125,7 @@ async def listen_to_server(websocket):
                 msg_data = data.get("data", {})
 
                 if msg_type:
-                    event = Event(name=msg_type, data=msg_data)
-                    event_bus.publish(msg_type, event)
+                    event_bus.publish(msg_type, msg_data)
                     print(f"Received message: {msg_type}")
                 else:
                     print("Unknown message format:", data)

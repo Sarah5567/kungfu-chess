@@ -75,15 +75,22 @@ class Game:
 
         updated_pieces = event.data.get("pieces", {})
         for pid, piece_data in updated_pieces.items():
-            pos : tuple[int, int] = piece_data["pos"]
-            state = piece_data["state"]
+            pos : tuple[float, float] = piece_data["pos"]
+            state : str = piece_data["state"]
 
             if not pid in self.pieces:
-                piece = self.piece_factory.create_piece(pid, pos)
+                piece = self.piece_factory.create_piece(pid, pos, state)
                 self.pieces[pid] = piece
-            self.pieces[pid]._state = state["name"]
-
-
+            else:
+                piece = self.pieces[pid]
+                cmd = Command(
+                    timestamp=int(time.monotonic() * 1000),
+                    piece_id=pid,
+                    type=state,
+                    params=[pos, pos]
+                )
+                piece.on_command(cmd)
+                piece.update_pos(pos)
 
     def _get_response(self, event : Event):
         event_type: str = event.data['type']
@@ -113,7 +120,6 @@ class Game:
     def start_keyboard_thread(self):
         def keyboard_loop():
             while self._running:
-                time.sleep(0.05)
                 with self._lock:
                     if self.role == "BLACK":
                         dy, dx = 0, 0
@@ -173,7 +179,7 @@ class Game:
 
         self.start_keyboard_thread()
 
-        while self._running and not self._is_win():
+        while self._running:
             self._draw()
             for piece in self.pieces.values():
                 piece.update(self.game_time_ms())
@@ -291,7 +297,7 @@ class Game:
                     type=move_type,
                     params=[src_alg, dst_alg]
                 )
-                event_bus.subscribe("SEND_REQUEST", {'name': "ACTION_REQUEST", 'cmd': cmd})
+                event_bus.publish("SEND_REQUEST", {'name': "ACTION_REQUEST", 'cmd': cmd})
             reset_func()
             return "source", None
 

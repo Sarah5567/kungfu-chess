@@ -1,12 +1,12 @@
 from client.UI.Board import Board
 from client.UI.Command import Command
 from client.UI.State import State
-from typing import Optional
+from typing import Optional, Tuple
 import cv2
 
 
 class Piece:
-    def __init__(self, piece_id: str, init_state: State, pos : (int, int)):
+    def __init__(self, piece_id: str, init_state: State, pos : (float, float)):
         self._id = piece_id
         self._state = init_state
         self._current_cmd: Optional[Command] = None
@@ -14,7 +14,11 @@ class Piece:
 
 
     def on_command(self, cmd: Command):
+        self._current_cmd = cmd
         self._state = self._state.process_command(cmd)
+
+    def update_pos(self, pos : Tuple[float, float]):
+        self.pos = pos
 
     def reset(self, start_ms: int):
         if self._current_cmd:
@@ -22,11 +26,6 @@ class Piece:
 
     def update(self, now_ms: int):
         self._state.update(now_ms)
-        if self._state._physics.finished:
-            next_state =  next(iter(self._state.transitions.keys()))
-            new_cell = self._state._physics.get_pos_in_cell()
-            cmd = Command(now_ms, self._id, next_state, [new_cell, new_cell])
-            self.on_command(cmd)
 
     def draw_on_board(self, board: Board, now_ms: int):
         img = self._state._graphics.get_img().img

@@ -1,7 +1,7 @@
 from server.game_logic.Command import Command
 from server.game_logic.Moves import Moves
 from server.game_logic.Physics import Physics
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 
 class State:
@@ -34,3 +34,10 @@ class State:
 
     def get_command(self) -> Optional[Command]:
         return self._current_command
+
+    def get_pos(self) -> Tuple[float, float]:
+        return self._physics.get_pos()
+
+    def get_state(self) -> str:
+        return self._current_command.type if self._current_command else "IDLE"
+
