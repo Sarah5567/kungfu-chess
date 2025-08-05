@@ -22,18 +22,50 @@ class Client:
         asyncio.create_task(self.listen_for_moves())
     async def listen_for_moves(self):
         try:
+            last_sequence = -1
             async for msg in self.websocket:
-                data = json.loads(msg)
-                print(f"[Client] Received enemy move: {data}")
-                if self.on_enemy_move:
-                    await self.on_enemy_move(data)  # Pass data directly to the callback
+                try:
+                    data = json.loads(msg)
+                    
+                    # Check if this is a confirmation message
+                    if data.get('type') == 'confirm':
+                        print(f"[Client] Move {data['sequence']} confirmed by server")
+                        continue
+                        
+                    # Ensure we process moves in sequence
+                    if 'sequence' in data:
+                        if data['sequence'] <= last_sequence:
+                            print(f"[Client] Ignoring duplicate/old move {data['sequence']}")
+                            continue
+                        last_sequence = data['sequence']
+                    
+                    print(f"[Client] Received enemy move: {data}")
+                    if self.on_enemy_move:
+                        await self.on_enemy_move(data)
+                        print(f"[Client] Processed move {data.get('sequence', 'unknown')}")
+                except json.JSONDecodeError:
+                    print("[Client] Received invalid message format")
+                except Exception as e:
+                    print(f"[Client] Error processing move: {e}")
         except websockets.ConnectionClosed:
             print("[Client] Connection closed.")
 
     async def send_move(self, move_dict):
         if self.websocket:
-            await self.websocket.send(json.dumps(move_dict))
-            print(f"[Client] Sent move: {move_dict}")
+            try:
+                await self.websocket.send(json.dumps(move_dict))
+                print(f"[Client] Sent move: {move_dict}")
+                # Wait a short time to ensure the move is processed
+                await asyncio.sleep(0.1)
+            except Exception as e:
+                print(f"[Client] Error sending move: {e}")
+                # Try to resend the move
+                try:
+                    await asyncio.sleep(0.5)  # Wait before retrying
+                    await self.websocket.send(json.dumps(move_dict))
+                    print(f"[Client] Move resent successfully")
+                except Exception as e:
+                    print(f"[Client] Failed to resend move: {e}")
 
     def set_on_enemy_move_callback(self, callback):
         """Sets the callback function to handle enemy moves."""

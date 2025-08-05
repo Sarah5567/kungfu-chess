@@ -87,7 +87,7 @@ async def connect_and_start():
                         game_state.board_state)
 
             # Run the game in a separate thread to avoid blocking the event loop
-            game_task = asyncio.create_task(asyncio.to_thread(game.run))
+            game_task = asyncio.create_task(game.run_async())
 
             await asyncio.gather(
                 listen_task,

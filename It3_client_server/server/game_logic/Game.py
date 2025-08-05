@@ -184,7 +184,7 @@ class Game:
             current_state = self.get_board_state()
 
             event_bus.publish('BOARD_UPDATE', self.get_board_state())
-            await asyncio.sleep(0.01)  # reduce CPU usage
+            await asyncio.sleep(1)  # reduce CPU usage
 
             # Check win condition
         winner = self.winner()

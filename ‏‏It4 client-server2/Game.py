@@ -179,7 +179,10 @@ class Game:
                     else:
                         dst_empty = False
 
-                if not self.is_path_clean(dst_cell, src_cell):
+                # Allow enemy moves even if path is obstructed or destination is occupied
+                if moving_piece.get_id()[1].lower() != self.client.color.lower():
+                    print("Processing enemy move.")
+                elif not self.is_path_clean(dst_cell, src_cell):
                     print("Move blocked: Path is obstructed.")
                     continue
 

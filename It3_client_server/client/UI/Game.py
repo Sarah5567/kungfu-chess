@@ -163,20 +163,14 @@ class Game:
 
         threading.Thread(target=keyboard_loop, daemon=True).start()
 
-    def run(self):
+    async def run_async(self):
         self.start_time = time.monotonic()
         self.screen.reset()
 
-        # while True:
-        #     key = cv2.waitKey(0)
-        #     if key == 13:  # Enter
-        #         break
-
         for piece in self.pieces.values():
             piece.reset(self.game_time_ms())
+
         self.screen.show("Chess")
-
-
         self.start_keyboard_thread()
 
         while self._running:
@@ -185,6 +179,8 @@ class Game:
                 piece.update(self.game_time_ms())
             self.screen.show("Chess")
             cv2.waitKey(1)
+
+            await asyncio.sleep(0.016)  # כ-60 FPS, לא חוסם event loop
 
         self._announce_win()
         self._running = False
