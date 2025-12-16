@@ -16,7 +16,7 @@ if __name__ == "__main__":
         cell_W_m=1,
         W_cells=8,
         H_cells=8,
-        img=Img().read("../board.png", size=(640, 640))
+        img=Img().read("../../board.png", size=(640, 640))
     )
 
     screen = Screen(['time', 'source', 'destination'], screen_size=(780, 1600), bg_color=(255, 255, 255))
