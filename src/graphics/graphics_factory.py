@@ -1,5 +1,5 @@
 import pathlib
-from Graphics import Graphics
+from graphics import Graphics
 from src.core.Board import Board
 
 
@@ -12,7 +12,7 @@ class GraphicsFactory:
              cfg: dict,
              cell_size: tuple[int, int]) -> Graphics:
         """Load graphics from sprites directory with configuration."""
-        graphics_cfg = cfg.get("graphics", {})
+        graphics_cfg = cfg.get("", {})
         fps = graphics_cfg.get("frames_per_sec", 6.0)
         loop = graphics_cfg.get("is_loop", True)
 

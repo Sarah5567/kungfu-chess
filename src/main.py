@@ -1,7 +1,7 @@
 from pathlib import Path
 from src.core.Board import Board
-from Img import Img
-from Screen import Screen
+from src.graphics.img import Img
+from src.graphics.screen import Screen
 
 if __name__ == "__main__":
     base_path = Path(__file__).resolve().parent

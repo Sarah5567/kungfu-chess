@@ -1,5 +1,5 @@
 # mock_img.py
-from Img import Img
+from img import Img
 
 class MockImg(Img):
     """Headless Img that just records calls."""

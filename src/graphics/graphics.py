@@ -1,7 +1,7 @@
 import pathlib
 import time
 from typing import List
-from Img import Img
+from img import Img
 from Command import Command
 from src.core.Board import Board
 
@@ -12,7 +12,7 @@ class Graphics:
                  board: Board,
                  loop: bool = True,
                  fps: float = 6.0):
-        self.board = board  # קודם כל שומרים את ה-board
+        self.board = board
         self.loop = loop
         self.fps = fps
         self.frame_time_ms = 1000 / fps  # ms per frame
@@ -22,7 +22,7 @@ class Graphics:
 
     def copy(self):
         """Create a shallow copy of the graphics object."""
-        g = Graphics.__new__(Graphics)  # יצירה בלי קריאה ל־__init__
+        g = Graphics.__new__(Graphics)
         g.sprites = self.sprites
         g.loop = self.loop
         g.fps = self.fps
