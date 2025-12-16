@@ -1,13 +1,13 @@
 import pathlib
 from typing import Dict, Tuple
 import json
-from src.core.Board import Board
-from GraphicsFactory import GraphicsFactory
-from src.core.Moves import Moves
-from PhysicsFactory import PhysicsFactory
-from Piece import Piece
-from src.core.State import State
-from enums.StatesNames import StatesNames
+from src.core.board import Board
+from src.graphics.graphics_factory import GraphicsFactory
+from src.core.moves import Moves
+from src.physics.physics_factory import PhysicsFactory
+from piece import Piece
+from src.core.state import State
+from src.enums.states_names import StatesNames
 
 
 class PieceFactory:

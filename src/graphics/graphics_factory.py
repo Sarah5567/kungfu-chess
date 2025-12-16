@@ -1,6 +1,6 @@
 import pathlib
 from graphics import Graphics
-from src.core.Board import Board
+from src.core.board import Board
 
 
 class GraphicsFactory:

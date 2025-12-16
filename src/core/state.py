@@ -1,10 +1,10 @@
-from Command import Command
-from Moves import Moves
-from Graphics import Graphics
-from Physics import Physics
+from src.input.command import Command
+from moves import Moves
+from src.graphics.graphics import Graphics
+from src.physics.physics import Physics
 from typing import Dict, Optional
 
-from enums.StatesNames import StatesNames
+from src.enums.states_names import StatesNames
 
 
 class State:

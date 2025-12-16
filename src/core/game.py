@@ -6,15 +6,15 @@ import cv2
 from typing import Dict, Tuple, Optional, Callable
 import threading
 import keyboard
-from Board import Board
-from Command import Command
-from enums.EventsNames import EventsNames
-from Log import Log
-from Piece import Piece
-from Score import Score
-from Screen import Screen
-from EventBus import event_bus, Event
-from PieceFactory import PieceFactory
+from board import Board
+from src.input.command import Command
+from src.enums.events_names import EventsNames
+from src.Log import Log
+from src.Piece import Piece
+from src.score import Score
+from src.Screen import Screen
+from src.EventBus import event_bus, Event
+from src.PieceFactory import PieceFactory
 from playsound import playsound
 
 from enums.StatesNames import StatesNames

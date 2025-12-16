@@ -1,4 +1,4 @@
-from EventBus import Event
+from src.input.event_bus import Event
 
 class Score:
     _piece_score = {

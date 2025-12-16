@@ -1,13 +1,13 @@
-import PhysicsFactory
-from src.core.Board import Board
-from Command import Command
-from EventBus import event_bus
-from enums.EventsNames import EventsNames
-from src.core.State import State
+from src.physics.physics_factory import PhysicsFactory
+from src.core.board import Board
+from src.input.command import Command
+from src.input.event_bus import event_bus
+from src.enums.events_names import EventsNames
+from src.core.state import State
 from typing import Optional
 import cv2
 
-from enums.StatesNames import StatesNames
+from src.enums.states_names import StatesNames
 
 
 class Piece:

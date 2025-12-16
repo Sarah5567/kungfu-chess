@@ -1,8 +1,8 @@
 from typing import Tuple, Any, List
 import cv2
 import numpy as np
-from src.core.Board import Board
-from src.core.Table import Table  # Required that your Table class contains log_to_table_data
+from src.core.board import Board
+from src.core.table import Table  # Required that your Table class contains log_to_table_data
 
 class Screen:
     def __init__(self,

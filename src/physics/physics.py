@@ -1,8 +1,8 @@
 from typing import Tuple
 from abc import ABC, abstractmethod
 
-from Command import Command
-from src.core.Board import Board
+from src.input.command import Command
+from src.core.board import Board
 
 
 class Physics(ABC):
@@ -57,8 +57,8 @@ class IdlePhysics(Physics):
 
 from typing import Tuple
 from Command import Command
-from src.core.Board import Board
-from Physics import Physics
+from src.core.board import Board
+from physics import Physics
 
 
 class MovePhysics(Physics):
