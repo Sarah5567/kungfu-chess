@@ -1,6 +1,12 @@
-/cpp/OpenCV_451
-/py/.idea
-/py/__pycache__
-/.vscode
-/java/target/
-/.idea
+# IDEs
+.idea/
+.vscode/
+
+# Python
+**/__pycache__/
+
+# Java
+**/target/
+
+# Project-specific
+/cpp/OpenCV_451/
