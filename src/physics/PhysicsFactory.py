@@ -1,4 +1,4 @@
-from Physics import *
+from src.physics.Physics import *
 from enums.StatesNames import StatesNames
 
 
