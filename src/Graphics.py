@@ -1,11 +1,9 @@
 import pathlib
 import time
-from dataclasses import dataclass, field
-from typing import List, Dict, Tuple, Optional
-import copy
+from typing import List
 from Img import Img
 from Command import Command
-from Board import Board
+from src.core.Board import Board
 
 
 class Graphics:

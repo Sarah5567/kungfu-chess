@@ -1,9 +1,8 @@
 from typing import Tuple
 from abc import ABC, abstractmethod
-from weakref import finalize
 
 from Command import Command
-from Board import Board
+from src.core.Board import Board
 
 
 class Physics(ABC):
@@ -58,7 +57,7 @@ class IdlePhysics(Physics):
 
 from typing import Tuple
 from Command import Command
-from Board import Board
+from src.core.Board import Board
 from Physics import Physics
 
 

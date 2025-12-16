@@ -1,9 +1,9 @@
 import PhysicsFactory
-from Board import Board
+from src.core.Board import Board
 from Command import Command
 from EventBus import event_bus
 from enums.EventsNames import EventsNames
-from State import State
+from src.core.State import State
 from typing import Optional
 import cv2
 

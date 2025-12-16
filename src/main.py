@@ -1,5 +1,5 @@
 from pathlib import Path
-from Board import Board
+from src.core.Board import Board
 from Img import Img
 from Screen import Screen
 
@@ -21,6 +21,6 @@ if __name__ == "__main__":
 
     screen = Screen(['time', 'source', 'destination'], screen_size=(780, 1600), bg_color=(255, 255, 255))
 
-    from Game import Game
+    from src.core.Game import Game
     game = Game(screen, board, pieces_root, placement_csv, sounds_root)
     game.run()

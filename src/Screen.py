@@ -1,8 +1,8 @@
 from typing import Tuple, Any, List
 import cv2
 import numpy as np
-from Board import Board
-from Table import Table  # Required that your Table class contains log_to_table_data
+from src.core.Board import Board
+from src.core.Table import Table  # Required that your Table class contains log_to_table_data
 
 class Screen:
     def __init__(self,
@@ -192,7 +192,6 @@ class Screen:
         Args:
             winner_name: שם השחקן המנצח
         """
-        import time
 
         # שמירת המצב הנוכחי של המסך
 
