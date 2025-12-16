@@ -5,7 +5,6 @@ import queue
 import cv2
 from typing import Dict, Tuple, Optional, Callable
 import threading
-import keyboard
 from Board import Board
 from Command import Command
 from enums.EventsNames import EventsNames
@@ -32,14 +31,14 @@ class Game:
         self.pos_to_piece: Dict[Tuple[int, int], Piece] = {}
         self._current_board = None
         self._load_pieces_from_csv(placement_csv)
-        self.focus_cell = (0, 0)
-        self._selection_mode = "source"
-        self._selected_source: Optional[Tuple[int, int]] = None
 
-
-        self.focus_cell2 = (self.board.H_cells - 1, 0)
-        self._selection_mode2 = "source"
-        self._selected_source2: Optional[Tuple[int, int]] = None
+        # Mouse input variables
+        self._selected_piece: Optional[Tuple[int, int]] = None
+        self._is_dragging = False
+        self._drag_start_pos: Optional[Tuple[int, int]] = None
+        self._last_click_time = 0
+        self._last_click_pos: Optional[Tuple[int, int]] = None
+        self._double_click_threshold = 0.5  # seconds
 
         self._lock = threading.Lock()
         self._running = True
@@ -49,6 +48,8 @@ class Game:
         self.black_score: Score = Score()
         self.white_score: Score = Score()
         self.subscriptions(sounds_root)
+
+        # Mouse callback will be set after window is created
 
     def subscriptions(self, sounds_root):
         event_bus.subscribe(EventsNames.BLACK_MOVE, self.black_log.update_log)
@@ -67,7 +68,7 @@ class Game:
         ]:
             event_bus.subscribe(event, self.play_sounds)
 
-    def play_sounds(self, event : Event):
+    def play_sounds(self, event: Event):
         def _play():
             playsound(str(self._sounds_root / event.data['sound']))
 
@@ -86,67 +87,183 @@ class Game:
                     self.pieces[piece.get_id()] = piece
                     self.pos_to_piece[cell] = piece
 
+    def _pixel_to_cell(self, x: int, y: int) -> Optional[Tuple[int, int]]:
+        """Convert pixel coordinates to board cell coordinates"""
+        # Calculate board offset (assuming board is centered)
+        board_h, board_w = self.board.img.img.shape[:2]
+        board_offset_y = (self.screen._screen_h - board_h) // 2
+        board_offset_x = (self.screen._screen_w - board_w) // 2
+        
+        # Adjust coordinates relative to board
+        board_x = x - board_offset_x
+        board_y = y - board_offset_y
+        
+        # Check if click is within board bounds
+        if board_x < 0 or board_y < 0 or board_x >= board_w or board_y >= board_h:
+            return None
+            
+        # Convert to cell coordinates
+        cell_x = board_x // self.board.cell_W_pix
+        cell_y = board_y // self.board.cell_H_pix
+        
+        # Validate cell coordinates
+        if not self.board.is_valid_cell(cell_y, cell_x):
+            return None
+            
+        return (cell_y, cell_x)
+
+    def _mouse_callback(self, event, x, y, flags, param):
+        """Handle mouse events"""
+        with self._lock:
+            current_time = time.time()
+            
+            if event == cv2.EVENT_LBUTTONDOWN:
+                cell = self._pixel_to_cell(x, y)
+                if cell is None:
+                    return
+                    
+                # Check for double click
+                if (self._last_click_pos == cell and 
+                    current_time - self._last_click_time < self._double_click_threshold):
+                    self._handle_double_click(cell)
+                else:
+                    self._handle_single_click(cell)
+                    
+                self._last_click_time = current_time
+                self._last_click_pos = cell
+                
+            elif event == cv2.EVENT_MOUSEMOVE and self._is_dragging:
+                # Visual feedback during drag could be added here
+                pass
+                
+            elif event == cv2.EVENT_LBUTTONUP:
+                if self._is_dragging:
+                    cell = self._pixel_to_cell(x, y)
+                    if cell is not None:
+                        self._handle_drag_end(cell)
+                self._is_dragging = False
+                self._drag_start_pos = None
+
+    def _handle_single_click(self, cell: Tuple[int, int]):
+        """Handle single click - start drag operation"""
+        if cell in self.pos_to_piece:
+            piece = self.pos_to_piece[cell]
+            # Check if player can control this piece
+            if hasattr(self, 'color') and piece.get_id()[1].lower() != self.color.lower():
+                print(f"Cannot select opponent's piece at {cell}")
+                return
+                
+            self._selected_piece = cell
+            self._is_dragging = True
+            self._drag_start_pos = cell
+            print(f"Selected piece {piece.get_id()} at {cell}")
+        else:
+            self._selected_piece = None
+            self._is_dragging = False
+
+    def _handle_double_click(self, cell: Tuple[int, int]):
+        """Handle double click - jump in place"""
+        if cell in self.pos_to_piece:
+            piece = self.pos_to_piece[cell]
+            # Check if player can control this piece
+            if hasattr(self, 'color') and piece.get_id()[1].lower() != self.color.lower():
+                print(f"Cannot jump opponent's piece at {cell}")
+                return
+                
+            src_alg = self.board.cell_to_algebraic(cell)
+            print(f"Jump command for piece {piece.get_id()} at {cell}")
+            
+            cmd = Command(
+                timestamp=self.game_time_ms(),
+                piece_id=piece.get_id(),
+                type=StatesNames.JUMP,
+                params=[src_alg, src_alg]
+            )
+            self.user_input_queue.put(cmd)
+            
+            # Send jump to server if client is available
+            if hasattr(self, 'client') and self.client:
+                move_dict = {
+                    "from": list(cell),
+                    "to": list(cell),
+                    "piece_id": piece.get_id()
+                }
+                # Use asyncio to send the move
+                import asyncio
+                try:
+                    loop = asyncio.get_event_loop()
+                    loop.create_task(self.client.send_move(move_dict))
+                except RuntimeError:
+                    # If no event loop is running, we're in sync mode
+                    print("Cannot send jump to server - no async loop running")
+
+    def _handle_drag_end(self, dest_cell: Tuple[int, int]):
+        """Handle end of drag operation - execute move"""
+        if self._selected_piece is None or self._drag_start_pos is None:
+            return
+            
+        src_cell = self._drag_start_pos
+        
+        # If dragged to same position, ignore
+        if src_cell == dest_cell:
+            print("Dragged to same position, ignoring")
+            return
+            
+        piece = self.pos_to_piece.get(src_cell)
+        if piece is None:
+            print("Source piece no longer exists")
+            return
+            
+        src_alg = self.board.cell_to_algebraic(src_cell)
+        dst_alg = self.board.cell_to_algebraic(dest_cell)
+        
+        print(f"Move command: {piece.get_id()} from {src_alg} to {dst_alg}")
+        
+        cmd = Command(
+            timestamp=self.game_time_ms(),
+            piece_id=piece.get_id(),
+            type=StatesNames.MOVE,
+            params=[src_alg, dst_alg]
+        )
+        self.user_input_queue.put(cmd)
+        
+        # Send move to server if client is available
+        if hasattr(self, 'client') and self.client:
+            move_dict = {
+                "from": list(src_cell),
+                "to": list(dest_cell),
+                "piece_id": piece.get_id()
+            }
+            # Use asyncio to send the move
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self.client.send_move(move_dict))
+            except RuntimeError:
+                # If no event loop is running, we're in sync mode
+                print("Cannot send move to server - no async loop running")
+
     def game_time_ms(self) -> int:
         return int((time.monotonic() - self.start_time) * 1000)
 
     def clone_board(self) -> Board:
         return self.board.clone()
 
-    def start_keyboard_thread(self):
-        def keyboard_loop():
-            while self._running:
-                time.sleep(0.05)
-                with self._lock:
-                    dy, dx = 0, 0
-                    if keyboard.is_pressed('esc'):
-                        self._running = False
-                        break
-                    if keyboard.is_pressed('left'):
-                        dx = -1
-                    elif keyboard.is_pressed('right'):
-                        dx = 1
-                    if keyboard.is_pressed('up'):
-                        dy = -1
-                    elif keyboard.is_pressed('down'):
-                        dy = 1
-                    if dx != 0 or dy != 0:
-                        h, w = self.board.H_cells, self.board.W_cells
-                        y, x = self.focus_cell
-                        self.focus_cell = ((y + dy) % h, (x + dx) % w)
-                        time.sleep(0.2)
-                    if keyboard.is_pressed('enter'):
-                        self._on_enter_pressed()
-                        time.sleep(0.2)
-
-                    dy2, dx2 = 0, 0
-                    if keyboard.is_pressed('a'):
-                        dx2 = -1
-                    elif keyboard.is_pressed('d'):
-                        dx2 = 1
-                    if keyboard.is_pressed('w'):
-                        dy2 = -1
-                    elif keyboard.is_pressed('s'):
-                        dy2 = 1
-                    if dx2 != 0 or dy2 != 0:
-                        h, w = self.board.H_cells, self.board.W_cells
-                        y2, x2 = self.focus_cell2
-                        self.focus_cell2 = ((y2 + dy2) % h, (x2 + dx2) % w)
-                        time.sleep(0.2)
-                    if keyboard.is_pressed('space'):
-                        self._on_space_pressed()
-                        time.sleep(0.2)
-        threading.Thread(target=keyboard_loop, daemon=True).start()
-
     def run(self):
         self.start_time = time.monotonic()
         self.screen.reset()
         self.screen.show("Chess")
+        
+        # Set mouse callback after window is created
+        cv2.setMouseCallback("Chess", self._mouse_callback)
+        
+        # Wait for initial click to start
         while True:
-            key = cv2.waitKey(0)
-            if key == 13:  # 13 הוא הקוד של מקש Enter
+            key = cv2.waitKey(30)
+            if key == 13:  # Enter key to start
                 break
-
-        self.start_keyboard_thread()
+            elif key == 27:  # ESC key to exit
+                return
 
         start_ms = self.game_time_ms()
         for piece in self.pieces.values():
@@ -170,7 +287,7 @@ class Game:
                     continue
                 moving_piece = self.pos_to_piece[src_cell]
 
-                dst_empty : bool = True
+                dst_empty: bool = True
                 if dst_cell in self.pos_to_piece:
                     target_piece = self.pos_to_piece[dst_cell]
                     if target_piece.get_id()[1] == moving_piece.get_id()[1] and target_piece.get_id() != moving_piece.get_id():
@@ -180,7 +297,7 @@ class Game:
                         dst_empty = False
 
                 # Allow enemy moves even if path is obstructed or destination is occupied
-                if moving_piece.get_id()[1].lower() != self.client.color.lower():
+                if hasattr(self, 'client') and moving_piece.get_id()[1].lower() != self.client.color.lower():
                     print("Processing enemy move.")
                 elif not self.is_path_clean(dst_cell, src_cell):
                     print("Move blocked: Path is obstructed.")
@@ -189,9 +306,12 @@ class Game:
                 self.pos_to_piece[src_cell].on_command(cmd, now, dst_empty)
 
             self._draw()
-
             self.screen.show("Chess")
-            cv2.waitKey(1)
+            
+            # Check for ESC key to exit
+            key = cv2.waitKey(1)
+            if key == 27:  # ESC key
+                self._running = False
 
         self._announce_win()
         self._running = False
@@ -281,7 +401,7 @@ class Game:
         if not opponent._state._current_command or opponent._state._current_command.type in [
             StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
             return True
-        if piece._state._current_command and piece._state._current_command.type not in  [
+        if piece._state._current_command and piece._state._current_command.type not in [
             StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
             return opponent._state._physics.start_time > piece._state._physics.start_time
         return False
@@ -293,15 +413,13 @@ class Game:
         for piece in self.pieces.values():
             piece.draw_on_board(board, now_ms)
 
-        # Draw only the current player's focus rectangle
-        if self.color.lower() == 'white':
-            self._draw_rectangle_on_board(board, self.focus_cell, (0, 255, 255))
-            if self._selected_source:
-                self._draw_rectangle_on_board(board, self._selected_source, (0, 0, 255))
-        elif self.color.lower() == 'black':
-            self._draw_rectangle_on_board(board, self.focus_cell2, (255, 0, 0))
-            if self._selected_source2:
-                self._draw_rectangle_on_board(board, self._selected_source2, (0, 255, 0))
+        # Highlight selected piece
+        if self._selected_piece and self._selected_piece in self.pos_to_piece:
+            self._draw_rectangle_on_board(board, self._selected_piece, (0, 255, 0))  # Green for selected
+            
+        # Show possible moves for selected piece (optional enhancement)
+        if self._is_dragging and self._selected_piece:
+            self._draw_rectangle_on_board(board, self._selected_piece, (0, 255, 255))  # Cyan for dragging
 
         self._current_board = board
         self.screen.update_left(self.black_log.log)
@@ -331,70 +449,6 @@ class Game:
         king = next(p for p in self.pieces.values() if p.get_id().lower().startswith("k"))
         winner_name = 'black' if king.get_id()[1] == 'B' else 'white'
         self.screen.announce_win(winner_name)
-
-    def _on_enter_pressed(self):
-        self._selection_mode, self._selected_source = self._handle_selection(
-            user_id=1,
-            selection_mode=self._selection_mode,
-            selected_source=self._selected_source,
-            focus_cell=self.focus_cell,
-            reset_func=self._reset_selection
-        )
-
-    def _on_space_pressed(self):
-        self._selection_mode2, self._selected_source2 = self._handle_selection(
-            user_id=2,
-            selection_mode=self._selection_mode2,
-            selected_source=self._selected_source2,
-            focus_cell=self.focus_cell2,
-            reset_func=self._reset_selection2
-        )
-
-    def _handle_selection(self, user_id: int, selection_mode: str, selected_source: Optional[Tuple[int, int]],
-                          focus_cell: Tuple[int, int], reset_func: Callable[[], None]):
-        is_user1 = user_id == 1
-        player_color = 'W' if is_user1 else 'B'
-
-        if selection_mode == "source":
-            if focus_cell in self.pos_to_piece:
-                piece = self.pos_to_piece[focus_cell]
-                if not piece.get_id()[1] == player_color:
-                    print(f"User {user_id} cannot select this piece.")
-                    return selection_mode, selected_source
-                src_alg = self.board.cell_to_algebraic(focus_cell)
-                print(f"User {user_id} source selected at {focus_cell} -> {src_alg}")
-                return "dest", focus_cell
-        elif selection_mode == "dest":
-            if selected_source is None:
-                return selection_mode, selected_source
-            src_cell = selected_source
-            dst_cell = focus_cell
-            src_alg = self.board.cell_to_algebraic(src_cell)
-            dst_alg = self.board.cell_to_algebraic(dst_cell)
-            print(f"User {user_id} destination selected at {dst_cell} -> {dst_alg}")
-            piece = self.pos_to_piece.get(src_cell)
-            if piece:
-                move_type = StatesNames.JUMP if src_cell == dst_cell else StatesNames.MOVE
-                cmd = Command(
-                    timestamp=self.game_time_ms(),
-                    piece_id=piece.get_id(),
-                    type=move_type,
-                    params=[src_alg, dst_alg]
-                )
-                self.user_input_queue.put(cmd)
-            reset_func()
-            return "source", None
-
-        return selection_mode, selected_source
-
-    def _reset_selection(self):
-        self._selection_mode = "source"
-        self._selected_source = None
-
-    def _reset_selection2(self):
-        self._selection_mode2 = "source"
-        self._selected_source2 = None
-
 
     async def try_move_piece(self, piece_id: str, new_pos: Tuple[int, int]):
         piece = self.pieces.get(piece_id)

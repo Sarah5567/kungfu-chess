@@ -6,13 +6,16 @@ from Board import Board
 from Img import Img
 from Screen import Screen
 from Game import Game
+
+
 class Client:
     def __init__(self, uri, game):
         self.uri = uri
         self.websocket = None
         self.color = None
         self.game = game
-        self.on_enemy_move = None
+        self.on_enemy_move_callback = None
+
     async def connect(self):
         self.websocket = await websockets.connect(self.uri)
         msg = await self.websocket.recv()
@@ -20,6 +23,7 @@ class Client:
         self.color = data.get("color")
         print(f"[Client] Connected as {self.color}")
         asyncio.create_task(self.listen_for_moves())
+
     async def listen_for_moves(self):
         try:
             last_sequence = -1
@@ -40,8 +44,8 @@ class Client:
                         last_sequence = data['sequence']
                     
                     print(f"[Client] Received enemy move: {data}")
-                    if self.on_enemy_move:
-                        await self.on_enemy_move(data)
+                    if self.on_enemy_move_callback:
+                        await self.on_enemy_move_callback(data)
                         print(f"[Client] Processed move {data.get('sequence', 'unknown')}")
                 except json.JSONDecodeError:
                     print("[Client] Received invalid message format")
@@ -69,40 +73,20 @@ class Client:
 
     def set_on_enemy_move_callback(self, callback):
         """Sets the callback function to handle enemy moves."""
-        self.on_enemy_move = callback
+        self.on_enemy_move_callback = callback
 
-    async def on_enemy_move(self, move):
-        source = tuple(move["from"])
-        dest = tuple(move["to"])
-        piece = self.game.pos_to_piece.get(source)
-        if piece is None:
-            print("Enemy move from empty cell.")
-            return
 
-        if piece.get_id()[1].lower() == self.color.lower():
-            print("Error: received move for our own piece (ignored).")
-            return
+def run_game_sync(game):
+    """Run the game in synchronous mode"""
+    game.run()
 
-        print(f"Enemy moved {piece.get_id()} from {source} to {dest}")
-        piece.set_pos(dest)  # Update the piece's position directly
-        self.game._update_position_mapping()
 
-        from Command import Command
-        from enums.StatesNames import StatesNames
-        move_type = StatesNames.JUMP if source == dest else StatesNames.MOVE
-        cmd = Command(
-            timestamp=self.game.game_time_ms(),
-            piece_id=piece.get_id(),
-            type=move_type,
-            params=[self.game.board.cell_to_algebraic(source), self.game.board.cell_to_algebraic(dest)]
-        )
-        self.game.user_input_queue.put(cmd)
-        print("Enemy move command queued.")
 async def main():
     base_path = Path(__file__).resolve().parent
     pieces_root = base_path.parent / "PIECES"
     placement_csv = base_path / "board.csv"
     sounds_root = base_path.parent / "sounds"
+    
     board = Board(
         cell_H_pix=80,
         cell_W_pix=80,
@@ -112,11 +96,14 @@ async def main():
         H_cells=8,
         img=Img().read(str(base_path.parent / "board.png"), size=(640, 640))
     )
+    
     screen = Screen(['time', 'source', 'destination'], screen_size=(780, 1600), bg_color=(255, 255, 255))
     game = Game(screen, board, pieces_root, placement_csv, sounds_root)
+    
     client = Client("ws://localhost:8765", game)
     await client.connect()
     game.set_client(client)  # Pass client to the game for communication
+
     async def on_enemy_move(move):
         source = tuple(move["from"])
         dest = tuple(move["to"])
@@ -124,14 +111,18 @@ async def main():
         if piece is None:
             print("Enemy move from empty cell.")
             return
-        # במקרה של מהלך היריב, צבע הפיסקה אמור להיות ההפך משלנו
+            
+        # Check if this is really an enemy piece
         if piece.get_id()[1].lower() == client.color.lower():
             print("Error: received move for our own piece (ignored).")
             return
+            
         print(f"Enemy moved {piece.get_id()} from {source} to {dest}")
-        # הוספת הפקודה ל-queue - לא לזוז ישירות
+        
+        # Add command to queue instead of moving directly
         from Command import Command
         from enums.StatesNames import StatesNames
+        
         move_type = StatesNames.JUMP if source == dest else StatesNames.MOVE
         cmd = Command(
             timestamp=game.game_time_ms(),
@@ -141,8 +132,22 @@ async def main():
         )
         game.user_input_queue.put(cmd)
         print("Enemy move command queued")
+
     client.set_on_enemy_move_callback(on_enemy_move)
-    # הפעלת המשחק בסריקה של הקלט וציור
-    game.run()
+    
+    # Run the game in a separate thread to allow async operations
+    import threading
+    game_thread = threading.Thread(target=run_game_sync, args=(game,), daemon=True)
+    game_thread.start()
+    
+    # Keep the async event loop running
+    try:
+        while game_thread.is_alive():
+            await asyncio.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Game interrupted")
+        game._running = False
+
+
 if __name__ == "__main__":
     asyncio.run(main())
