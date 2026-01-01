@@ -18,6 +18,7 @@ class PieceFactory:
         self._graphics_factory = GraphicsFactory(board)
         self._templates: Dict[str, Piece] = {}
         self.counter = {}
+
     def _build_state_machine(self, piece_dir: pathlib.Path, cell: Tuple[int, int]) -> State:
         """Build a state machine for a piece from its directory."""
         states: Dict[StatesNames, State] = {}
@@ -41,12 +42,14 @@ class PieceFactory:
                 (self.board.cell_H_pix, self.board.cell_W_pix)
             )
             states[state_name] = State(moves, graphics, physics)
+
         states[StatesNames.IDLE].set_transition(StatesNames.MOVE, states[StatesNames.MOVE])
         states[StatesNames.IDLE].set_transition(StatesNames.JUMP, states[StatesNames.JUMP])
         states[StatesNames.MOVE].set_transition(StatesNames.LONG_REST, states[StatesNames.LONG_REST])
         states[StatesNames.JUMP].set_transition(StatesNames.SHORT_REST, states[StatesNames.SHORT_REST])
         states[StatesNames.LONG_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
         states[StatesNames.SHORT_REST].set_transition(StatesNames.IDLE, states[StatesNames.IDLE])
+
         return states[StatesNames.IDLE]
 
     def create_piece(self, p_type: str, cell: Tuple[int, int]) -> Piece:
