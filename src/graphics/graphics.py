@@ -2,7 +2,7 @@ import pathlib
 import time
 from typing import List
 from img import Img
-from Command import Command
+from src.input.command import Command
 from src.core.board import Board
 
 
