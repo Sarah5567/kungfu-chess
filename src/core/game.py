@@ -9,15 +9,15 @@ import keyboard
 from board import Board
 from src.input.command import Command
 from src.enums.events_names import EventsNames
-from src.Log import Log
-from src.Piece import Piece
-from src.score import Score
-from src.Screen import Screen
-from src.EventBus import event_bus, Event
-from src.PieceFactory import PieceFactory
+from src.infrastructure.log import Log
+from src.pieces.piece import Piece
+from src.core.score import Score
+from src.graphics.screen import Screen
+from src.input.event_bus import event_bus, Event
+from src.pieces.piece_factory import PieceFactory
 from playsound import playsound
 
-from enums.StatesNames import StatesNames
+from src.enums.states_names import StatesNames
 
 
 class Game:
@@ -232,7 +232,7 @@ class Game:
         to_promote = []  # Collect here the pawns that need to be promoted to queen
 
         for piece in list(self.pieces.values()):  # Use list to freeze values during loop
-            x, y = map(int, piece._state._physics.get_pos())
+            x, y = map(int, piece.state.physics.get_pos())
             if not self.board.is_valid_cell(x, y):
                 continue
             cell_x = x // self.board.cell_W_pix
@@ -241,7 +241,7 @@ class Game:
 
             if pos in self.pos_to_piece:
                 opponent = self.pos_to_piece[pos]
-                if piece._state._current_command and piece._state._current_command.type == StatesNames.JUMP:
+                if piece.state.current_command and piece.state.current_command.type == StatesNames.JUMP:
                     continue
                 if self.should_capture(opponent, piece):
                     event_bus.publish(
@@ -275,12 +275,12 @@ class Game:
                 self.pos_to_piece[pos] = new_queen
 
     def should_capture(self, opponent, piece):
-        if not opponent._state._current_command or opponent._state._current_command.type in [
+        if not opponent.state.current_command or opponent.state.current_command.type in [
             StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
             return True
-        if piece._state._current_command and piece._state._current_command.type not in  [
+        if piece.state.current_command and piece.state.current_command.type not in  [
             StatesNames.IDLE, StatesNames.LONG_REST, StatesNames.SHORT_REST]:
-            return opponent._state._physics.start_time > piece._state._physics.start_time
+            return opponent.state.physics.start_time > piece.state.physics.start_time
         return False
 
     def _draw(self):

@@ -1,5 +1,5 @@
 from src.physics.physics import *
-from src.enums.StatesNames import StatesNames
+from src.enums.states_names import StatesNames
 
 
 class PhysicsFactory:

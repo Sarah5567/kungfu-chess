@@ -16,6 +16,9 @@ class Piece:
         self._state = init_state
         self._current_cmd: Optional[Command] = None
 
+    @property
+    def state(self):
+        return self._state
 
     def on_command(self, cmd: Command, now_ms: int, dst_empty : bool = True):
         if self.is_command_possible(cmd, dst_empty) and self._state.is_command_possible(cmd):
@@ -40,18 +43,15 @@ class Piece:
         dst = self._state._physics.board.algebraic_to_cell(cmd.params[1])
         legal = self._state._moves.get_moves(*src)
 
-        # חייל (Pawn)
         if self._id[0] == 'P':
             src_y, src_x = src
             dst_y, dst_x = dst
 
-            direction = -1 if self._id[1] == 'W' else 1  # לבנים עולים, שחורים יורדים
+            direction = -1 if self._id[1] == 'W' else 1
 
-            # תנועה קדימה צעד אחד
             if dst_x == src_x and dst_y == src_y + direction and dst_empty:
                 return True
 
-            # תנועה קדימה שני צעדים (אם בעמדת פתיחה)
             start_row = 6 if self._id[1] == 'W' else 1
             if (src_y == start_row and
                     dst_x == src_x and
@@ -59,16 +59,12 @@ class Piece:
                     dst_empty):
                 return True
 
-            # אכילה באלכסון
             if abs(dst_x - src_x) == 1 and dst_y == src_y + direction and not dst_empty:
                 return True
 
-            return False  # כל השאר לא חוקי
+            return False
 
-        # כלים אחרים – משתמשים בלוגיקה הרגילה
         return dst in legal
-
-        return cmd is not None and cmd.type in self._state.transitions
 
     def reset(self, start_ms: int):
         if self._current_cmd:
@@ -99,7 +95,6 @@ class Piece:
                 piece_img = img[:h, :w]
                 base = board_img[y:y + h, x:x + w]
 
-                # התאמת ערוצים
                 target_channels = base.shape[2]
                 piece_img = self._match_channels(piece_img, target_channels)
 

@@ -55,11 +55,6 @@ class IdlePhysics(Physics):
         return True
 
 
-from typing import Tuple
-from Command import Command
-from src.core.board import Board
-from physics import Physics
-
 
 class MovePhysics(Physics):
     def __init__(self, start_cell: Tuple[int, int], board: Board, speed_m_s: float = 1.0):

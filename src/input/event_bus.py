@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List
 
-from enums.EventsNames import EventsNames
+from src.enums.events_names import EventsNames
 
 
 class Event:

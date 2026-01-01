@@ -15,6 +15,14 @@ class State:
         self.transitions: Dict[StatesNames, "State"] = {}
         self._current_command: Optional[Command] = None
 
+    @property
+    def physics(self):
+        return self._physics
+
+    @property
+    def current_command(self):
+        return self._current_command
+
     def set_transition(self, event: StatesNames, target: "State"):
         self.transitions[event] = target
 

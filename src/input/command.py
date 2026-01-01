@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-from enums.StatesNames import StatesNames
+from src.enums.states_names import StatesNames
 
 
 @dataclass

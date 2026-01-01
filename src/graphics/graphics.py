@@ -2,7 +2,7 @@ import pathlib
 import time
 from typing import List
 from img import Img
-from Command import Command
+from src.input.command import Command
 from src.core.board import Board
 
 
@@ -52,7 +52,6 @@ class Graphics:
     def get_img(self) -> Img:
         return self.sprites[self.current_frame]
 
-    # ─── internal helper ──────────────────────────────────────────────
     def _load_sprites(self, folder: pathlib.Path) -> List[Img]:
         """Load all sprite images from a folder in sorted order and resize to cell size."""
         images = []
