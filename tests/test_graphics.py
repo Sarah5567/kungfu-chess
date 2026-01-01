@@ -19,7 +19,7 @@ def fake_load_sprites(self, folder):
 @pytest.fixture
 def graphics():
     Graphics._load_sprites = fake_load_sprites
-    g = Graphics(pathlib.Path("."), board=SimpleNamespace(), loop=True, fps=2.0)
+    g = Graphics(pathlib.Path(""), board=SimpleNamespace(), loop=True, fps=2.0)
     return g
 
 # ─── Tests ─────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ def test_WhenUpdateLooping_ThenFrameCycles(graphics):
 def test_WhenUpdateNotLooping_ThenFrameStops():
     # Arrange
     Graphics._load_sprites = fake_load_sprites
-    g = Graphics(pathlib.Path("."), board=SimpleNamespace(), loop=False, fps=2.0)
+    g = Graphics(pathlib.Path(""), board=SimpleNamespace(), loop=False, fps=2.0)
     g.start_time = 0
 
     # Act
